@@ -30,7 +30,7 @@ spring:
             - name: AuthenticationFilter
             - name: RoleFilter
               args:
-                requiredRoles: ADMIN,EMPLOYEE
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
 
 server:
   port: 8082
