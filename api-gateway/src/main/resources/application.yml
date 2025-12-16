@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: api-gateway
+
+  ##GATEWAY CONFIGURATIONS
+  cloud:
+    gateway:
+      routes:
+        ## AUTH SERVICE
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/v1/auth/**
+
+        ## PRODUCT SERVICE (READ)
+        - id: product-service-read
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**
+            - Method=GET
+
+        ## PRODUCT SERVICE (WRITE)
+        - id: product-service-write
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**
+            - Method=POST,PUT,DELETE,OPTIONS
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ADMIN,EMPLOYEE
+
+server:
+  port: 8082
+
+jwt:
+  secret: VNEqE5Yp+VzqS+kqzqjW+EbLpRm6cC7jmgc+YhoYxD8=
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
