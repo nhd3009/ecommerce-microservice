@@ -20,17 +20,30 @@ spring:
             - Path=/api/v1/products/**,/api/v1/categories/**
             - Method=GET
 
-        ## Protected WRITE APIs
+        ## WRITE (POST, PUT)
         - id: product-service-write
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/products/**,/api/v1/categories/**
-            - Method=POST,PUT,DELETE,OPTIONS
+            - Method=POST,PUT,OPTIONS
           filters:
             - name: AuthenticationFilter
             - name: RoleFilter
               args:
                 requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+
+        ## DELETE (for ADMIN only)
+        - id: product-service-delete
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**
+            - Method=DELETE
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN
+
 
 server:
   port: 8082

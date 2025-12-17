@@ -31,7 +31,6 @@ build/
 application-local.yml
 application-local.properties
 
-
 # Compiled class file
 *.class
 
