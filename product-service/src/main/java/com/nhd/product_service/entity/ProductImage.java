@@ -30,8 +30,6 @@ public class ProductImage {
   @Column(nullable = false)
   private String imageUrl;
 
-  private Boolean isPrimary = false;
-
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "product_id")
   private Product product;
