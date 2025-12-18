@@ -18,7 +18,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 
 # =====================
-# Gradle (nếu có)
+# Gradle
 # =====================
 build/
 .gradle/
@@ -30,6 +30,9 @@ build/
 *.env
 application-local.yml
 application-local.properties
+
+# Ignore uploads folder in product-service
+product-service/uploads/
 
 # Compiled class file
 *.class
