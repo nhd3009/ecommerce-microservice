@@ -11,12 +11,18 @@ import com.nhd.auth_service.mapper.UserMapper;
 import com.nhd.auth_service.repository.RoleRepository;
 import com.nhd.auth_service.repository.UserRepository;
 import com.nhd.auth_service.response.ApiResponse;
+
+import io.jsonwebtoken.Claims;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -57,7 +63,7 @@ public class AuthService {
   public ApiResponse<AuthResponse> login(LoginRequest request) {
     try {
       User user = userRepository.findByUsername(request.getUsername())
-          .orElseThrow(() -> new AuthException("User not found", HttpStatus.UNAUTHORIZED));
+          .orElseThrow(() -> new AuthException("User doesn't existed", HttpStatus.UNAUTHORIZED));
 
       if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
         throw new AuthException("Invalid username or password", HttpStatus.UNAUTHORIZED);
@@ -91,6 +97,39 @@ public class AuthService {
       throw new RuntimeException("Error refreshing token: " + e.getMessage());
     }
 
+  }
+
+  public ApiResponse<?> verifyToken(String token) {
+    if (token == null || token.isEmpty()) {
+        return new ApiResponse<>(
+                "Missing or invalid access token",
+                HttpStatus.UNAUTHORIZED.value(),
+                "Unauthorized"
+        );
+    }
+
+    try {
+        Claims claims = jwtService.extractAllClaims(token);
+
+        UserDto userInfo = new UserDto();
+        userInfo.setId(Long.valueOf(claims.getSubject())); // subject = userId
+        userInfo.setUsername(claims.get("username", String.class));
+        userInfo.setEmail(claims.get("email", String.class));
+        userInfo.setRoles(claims.get("roles", List.class));
+
+        return new ApiResponse<>(
+                userInfo,
+                HttpStatus.OK.value(),
+                "Token verified"
+        );
+
+    } catch (Exception e) {
+        return new ApiResponse<>(
+                "Invalid or expired token",
+                HttpStatus.UNAUTHORIZED.value(),
+                "Unauthorized"
+        );
+    }
   }
 
   public ApiResponse<String> logout(String username) {

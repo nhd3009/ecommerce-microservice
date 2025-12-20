@@ -1,5 +1,6 @@
 package com.nhd.auth_service.dto;
 
+import java.util.List;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,5 +15,5 @@ public class UserDto {
   private Long id;
   private String username;
   private String email;
-  private Set<String> roles;
+  private List<String> roles;
 }

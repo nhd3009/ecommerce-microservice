@@ -14,7 +14,7 @@ public class UserMapper {
         .roles(
             user.getRoles().stream()
                 .map(Role::getName)
-                .collect(Collectors.toSet())
+                .collect(Collectors.toList())
         )
         .build();
   }

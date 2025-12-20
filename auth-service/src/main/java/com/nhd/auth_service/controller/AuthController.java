@@ -2,24 +2,25 @@ package com.nhd.auth_service.controller;
 
 import com.nhd.auth_service.dto.AuthResponse;
 import com.nhd.auth_service.dto.LoginRequest;
-import com.nhd.auth_service.dto.RefreshTokenRequest;
 import com.nhd.auth_service.dto.RegisterRequest;
 import com.nhd.auth_service.dto.UserDto;
-import com.nhd.auth_service.exception.AuthException;
 import com.nhd.auth_service.response.ApiResponse;
 import com.nhd.auth_service.service.AuthService;
 import com.nhd.auth_service.service.JwtService;
 
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -46,6 +47,7 @@ public class AuthController {
     ApiResponse<AuthResponse> response = authService.login(request);
     String accessToken = response.getData().getAccessToken();
     String refreshToken = response.getData().getRefreshToken();
+    int status = response.getStatusCode();
 
     ResponseCookie accessCookie = ResponseCookie.from("accessToken", accessToken)
             .httpOnly(true)
@@ -63,7 +65,7 @@ public class AuthController {
             .sameSite("Lax")
             .build();
 
-    return ResponseEntity.ok()
+    return ResponseEntity.status(status)
             .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
             .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
             .body(response);
@@ -74,6 +76,7 @@ public class AuthController {
     ApiResponse<AuthResponse> response = authService.refreshToken(refreshToken);
     String newAccessToken = response.getData().getAccessToken();
     String newRefreshToken = response.getData().getRefreshToken();
+    int status = response.getStatusCode();
 
     ResponseCookie accessCookie = ResponseCookie.from("accessToken", newAccessToken)
             .httpOnly(true)
@@ -91,7 +94,7 @@ public class AuthController {
             .sameSite("Lax")
             .build();
 
-    return ResponseEntity.ok()
+    return ResponseEntity.status(status)
             .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
             .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
             .body(response);
@@ -102,6 +105,7 @@ public class AuthController {
     String token = authHeader.substring(7);
     String username = jwtService.extractUsername(token);
     ApiResponse<String> response = authService.logout(username);
+    int status = response.getStatusCode();
 
     ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
             .httpOnly(true)
@@ -117,10 +121,27 @@ public class AuthController {
             .maxAge(0)
             .build();
 
-    return ResponseEntity.ok()
+    return ResponseEntity.status(status)
             .header(HttpHeaders.SET_COOKIE, clearAccess.toString())
             .header(HttpHeaders.SET_COOKIE, clearRefresh.toString())
             .body(response);
   }
 
+  @GetMapping("/verify")
+    public ResponseEntity<?> verifyToken(
+            @CookieValue(value = "accessToken", required = false) String accessToken,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (accessToken != null && !accessToken.isEmpty()) {
+            token = accessToken;
+        }
+
+        ApiResponse<?> response = authService.verifyToken(token);
+        HttpStatus status = response.getStatusCode() == 200 ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
+
+        return ResponseEntity.status(status).body(response);
+    }
 }
