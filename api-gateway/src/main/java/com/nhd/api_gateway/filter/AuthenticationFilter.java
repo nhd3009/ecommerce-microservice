@@ -2,9 +2,13 @@ package com.nhd.api_gateway.filter;
 
 import com.nhd.api_gateway.util.JwtUtil;
 import com.nhd.api_gateway.util.ResponseUtil;
+
+import io.jsonwebtoken.Claims;
+
 import java.util.List;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -22,43 +26,51 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
   public static class Config {}
 
   @Override
-  public GatewayFilter apply(Config config) {
-    return (exchange, chain) -> {
-      String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            String token = null;
 
-      if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-        return ResponseUtil.writeError(
-            exchange,
-            HttpStatus.UNAUTHORIZED,
-            "Unauthorized",
-            "Missing or invalid Authorization header"
-        );
-      }
+            String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
 
-      String token = authHeader.substring(7);
+            if (token == null) {
+                HttpCookie cookie = exchange.getRequest().getCookies().getFirst("accessToken");
+                if (cookie != null) {
+                    token = cookie.getValue();
+                }
+            }
 
-      try {
-        jwtUtil.validateToken(token);
+            if (token == null || token.isEmpty()) {
+                return ResponseUtil.writeError(exchange,
+                        HttpStatus.UNAUTHORIZED,
+                        "Unauthorized",
+                        "Missing access token");
+            }
 
-        String username = jwtUtil.extractUsername(token);
-        List<String> roles = jwtUtil.extractRoles(token);
+            try {
+                Claims claims = jwtUtil.extractAllClaims(token);
+                String userId = claims.getSubject();
+                String email = claims.get("email", String.class);
+                List<String> rolesList = claims.get("roles", List.class);
+                String roles = String.join(",", rolesList);
 
-        ServerHttpRequest request = exchange.getRequest().mutate()
-            .header("X-Authenticated-User", username)
-            .header("X-Authenticated-Roles", String.join(",", roles))
-            .build();
+                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .header("X-Authenticated-UserId", userId)
+                        .header("X-Authenticated-Email", email)
+                        .header("X-Authenticated-Roles", roles)
+                        .build();
 
-        return chain.filter(exchange.mutate().request(request).build());
+                return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
-      } catch (Exception e) {
-        return ResponseUtil.writeError(
-            exchange,
-            HttpStatus.UNAUTHORIZED,
-            "Unauthorized",
-            e.getMessage()
-        );
-      }
-    };
-  }
+            } catch (Exception e) {
+                return ResponseUtil.writeError(exchange,
+                        HttpStatus.UNAUTHORIZED,
+                        "Unauthorized",
+                        "Invalid or expired token");
+            }
+        };
+    }
 
 }
