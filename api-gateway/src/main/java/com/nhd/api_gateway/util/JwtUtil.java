@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -30,7 +31,7 @@ public class JwtUtil {
     return claims.get("roles", List.class);
   }
 
-  private Claims extractAllClaims(String token) {
+  public Claims extractAllClaims(String token) {
     return Jwts.parser()
         .setSigningKey(getSignKey())
         .build()
@@ -38,8 +39,12 @@ public class JwtUtil {
         .getBody();
   }
 
+  public Long extractUserId(String token) {
+    return Long.valueOf(extractAllClaims(token).getSubject());
+  }
+
   public String extractUsername(String token) {
-    return extractAllClaims(token).getSubject();
+      return extractAllClaims(token).get("username", String.class);
   }
 
   public boolean isTokenExpired(String token) {

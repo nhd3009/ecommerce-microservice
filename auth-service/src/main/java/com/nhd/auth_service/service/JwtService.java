@@ -32,6 +32,8 @@ public class JwtService {
 
   public String generateToken(User user) {
     Map<String, Object> claims = new HashMap<>();
+    claims.put("username", user.getUsername());
+    claims.put("email", user.getEmail());
     claims.put("roles", user.getRoles().stream()
         .map(Role::getName)
         .collect(Collectors.toList()));
@@ -39,15 +41,19 @@ public class JwtService {
     return Jwts.builder()
         .setHeaderParam("typ", "JWT")
         .setClaims(claims)
-        .setSubject(user.getUsername())
+        .setSubject(String.valueOf(user.getId()))
         .setIssuedAt(new Date())
         .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
         .signWith(getSignKey(), SignatureAlgorithm.HS256)
         .compact();
   }
 
+  public Long extractUserId(String token) {
+    return Long.valueOf(extractAllClaims(token).getSubject());
+  }
+
   public String extractUsername(String token) {
-    return extractClaim(token, Claims::getSubject);
+      return extractAllClaims(token).get("username", String.class);
   }
 
   public List<String> extractRoles(String token) {

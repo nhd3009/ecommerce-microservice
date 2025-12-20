@@ -8,12 +8,21 @@ import com.nhd.auth_service.dto.UserDto;
 import com.nhd.auth_service.exception.AuthException;
 import com.nhd.auth_service.response.ApiResponse;
 import com.nhd.auth_service.service.AuthService;
+import com.nhd.auth_service.service.JwtService;
+
 import lombok.RequiredArgsConstructor;
+
+import java.time.Duration;
+
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
   private final AuthService authService;
+  private final JwtService jwtService;
 
   @PostMapping("/register")
   public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
@@ -33,24 +43,84 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-    ApiResponse<?> response = authService.login(request);
-    return ResponseEntity
-        .status(HttpStatus.OK)
-        .body(response);
+    ApiResponse<AuthResponse> response = authService.login(request);
+    String accessToken = response.getData().getAccessToken();
+    String refreshToken = response.getData().getRefreshToken();
+
+    ResponseCookie accessCookie = ResponseCookie.from("accessToken", accessToken)
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(Duration.ofHours(2))
+            .sameSite("Lax")
+            .build();
+
+    ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(Duration.ofDays(7))
+            .sameSite("Lax")
+            .build();
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+            .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+            .body(response);
   }
 
   @PostMapping("/refresh")
-  public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
-    ApiResponse<AuthResponse> response = authService.refreshToken(request.getRefreshToken());
-    return ResponseEntity.ok(response);
+  public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
+    ApiResponse<AuthResponse> response = authService.refreshToken(refreshToken);
+    String newAccessToken = response.getData().getAccessToken();
+    String newRefreshToken = response.getData().getRefreshToken();
+
+    ResponseCookie accessCookie = ResponseCookie.from("accessToken", newAccessToken)
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(Duration.ofHours(2))
+            .sameSite("Lax")
+            .build();
+
+    ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", newRefreshToken)
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(Duration.ofDays(7))
+            .sameSite("Lax")
+            .build();
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+            .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+            .body(response);
   }
 
   @PostMapping("/logout")
-  public ResponseEntity<?> logout() {
-    String username = SecurityContextHolder.getContext().getAuthentication().getName();
-    System.out.println("Logout user: " + username);
+  public ResponseEntity<ApiResponse<String>> logout(@RequestHeader("Authorization") String authHeader) {
+    String token = authHeader.substring(7);
+    String username = jwtService.extractUsername(token);
     ApiResponse<String> response = authService.logout(username);
-    return ResponseEntity.ok(response);
+
+    ResponseCookie clearAccess = ResponseCookie.from("accessToken", "")
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(0)
+            .build();
+
+    ResponseCookie clearRefresh = ResponseCookie.from("refreshToken", "")
+            .httpOnly(true)
+            .secure(false)
+            .path("/")
+            .maxAge(0)
+            .build();
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, clearAccess.toString())
+            .header(HttpHeaders.SET_COOKIE, clearRefresh.toString())
+            .body(response);
   }
 
 }
