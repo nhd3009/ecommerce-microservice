@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nhd.product_service.request.ProductRequest;
+import com.nhd.product_service.response.ApiResponse;
+import com.nhd.product_service.dto.ProductDto;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.service.FileStorageService;
 import com.nhd.product_service.service.ProductService;
@@ -25,7 +27,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
@@ -39,17 +40,17 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(productService.getAllProducts(page, size));
     }
-    
+
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductById(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(productService.getProductById(id));
     }
-    
+
     @PostMapping("/{id}/decrease-stock")
-    public ResponseEntity<?> decreaseProductStock(@PathVariable("id") Long id, @RequestParam("quantity") int quantity) {
+    public ResponseEntity<ApiResponse<String>> decreaseProductStock(@PathVariable("id") Long id,
+            @RequestParam("quantity") int quantity) {
         return ResponseEntity.ok(productService.decreaseStock(id, quantity));
     }
-    
 
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<?> getProductsByCategory(

@@ -128,7 +128,7 @@ public class AuthController {
   }
 
   @GetMapping("/verify")
-    public ResponseEntity<?> verifyToken(
+    public ResponseEntity<ApiResponse<UserDto>> verifyToken(
             @CookieValue(value = "accessToken", required = false) String accessToken,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
@@ -139,7 +139,7 @@ public class AuthController {
             token = accessToken;
         }
 
-        ApiResponse<?> response = authService.verifyToken(token);
+        ApiResponse<UserDto> response = authService.verifyToken(token);
         HttpStatus status = response.getStatusCode() == 200 ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
 
         return ResponseEntity.status(status).body(response);
