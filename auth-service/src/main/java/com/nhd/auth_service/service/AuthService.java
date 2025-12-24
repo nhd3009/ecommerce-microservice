@@ -35,7 +35,7 @@ public class AuthService {
   private final JwtService jwtService;
 
   public ApiResponse<UserDto> register(RegisterRequest request) {
-    try{
+    try {
       if (userRepository.findByUsername(request.getUsername()).isPresent()) {
         throw new RuntimeException("Username already exists");
       }
@@ -55,7 +55,7 @@ public class AuthService {
       userRepository.save(user);
       UserDto userDto = UserMapper.toDto(user);
       return new ApiResponse<>(userDto, HttpStatus.CREATED.value(), "User has been created successfully!");
-    } catch (Exception e){
+    } catch (Exception e) {
       throw new RuntimeException("Error registering user: " + e.getMessage());
     }
   }
@@ -99,41 +99,38 @@ public class AuthService {
 
   }
 
-  public ApiResponse<?> verifyToken(String token) {
+  public ApiResponse<UserDto> verifyToken(String token) {
     if (token == null || token.isEmpty()) {
-        return new ApiResponse<>(
-                "Missing or invalid access token",
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized"
-        );
+      return new ApiResponse<>(
+          null,
+          HttpStatus.UNAUTHORIZED.value(),
+          "Missing or invalid access token");
     }
 
     try {
-        Claims claims = jwtService.extractAllClaims(token);
+      Claims claims = jwtService.extractAllClaims(token);
 
-        UserDto userInfo = new UserDto();
-        userInfo.setId(Long.valueOf(claims.getSubject())); // subject = userId
-        userInfo.setUsername(claims.get("username", String.class));
-        userInfo.setEmail(claims.get("email", String.class));
-        userInfo.setRoles(claims.get("roles", List.class));
+      UserDto userInfo = new UserDto();
+      userInfo.setId(Long.valueOf(claims.getSubject())); // subject = userId
+      userInfo.setUsername(claims.get("username", String.class));
+      userInfo.setEmail(claims.get("email", String.class));
+      userInfo.setRoles(claims.get("roles", List.class));
 
-        return new ApiResponse<>(
-                userInfo,
-                HttpStatus.OK.value(),
-                "Token verified"
-        );
+      return new ApiResponse<>(
+          userInfo,
+          HttpStatus.OK.value(),
+          "Token verified");
 
     } catch (Exception e) {
-        return new ApiResponse<>(
-                "Invalid or expired token",
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized"
-        );
+      return new ApiResponse<>(
+          null,
+          HttpStatus.UNAUTHORIZED.value(),
+          "Invalid or expired token");
     }
   }
 
   public ApiResponse<String> logout(String username) {
-    try{
+    try {
       User user = userRepository.findByUsername(username)
           .orElseThrow(() -> new AuthException("User not found", HttpStatus.UNAUTHORIZED));
 
@@ -150,8 +147,7 @@ public class AuthService {
 
   }
 
-
-  public AuthResponse createdRefreshToken(User user){
+  public AuthResponse createdRefreshToken(User user) {
     String newAccessToken = jwtService.generateToken(user);
     String newRefreshToken = UUID.randomUUID().toString();
     Instant newRefreshExpired = Instant.now().plus(7, ChronoUnit.DAYS);
