@@ -16,7 +16,6 @@ import com.nhd.product_service.dto.ProductDto;
 import com.nhd.product_service.entity.Category;
 import com.nhd.product_service.entity.Product;
 import com.nhd.product_service.entity.ProductImage;
-import com.nhd.product_service.enums.CategoryStatus;
 import com.nhd.product_service.enums.ProductStatus;
 import com.nhd.product_service.exception.BadRequestException;
 import com.nhd.product_service.exception.ResourceNotFoundException;

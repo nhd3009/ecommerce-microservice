@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -37,6 +39,17 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(productService.getAllProducts(page, size));
     }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getProductById(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+    
+    @PostMapping("/{id}/decrease-stock")
+    public ResponseEntity<?> decreaseProductStock(@PathVariable("id") Long id, @RequestParam("quantity") int quantity) {
+        return ResponseEntity.ok(productService.decreaseStock(id, quantity));
+    }
+    
 
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<?> getProductsByCategory(
