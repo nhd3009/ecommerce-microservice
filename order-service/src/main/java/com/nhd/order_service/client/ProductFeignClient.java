@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.nhd.order_service.dto.ProductDto;
+import com.nhd.order_service.response.ApiResponse;
+
 @FeignClient(name = "PRODUCT-SERVICE")
 public interface ProductFeignClient {
     @GetMapping("/api/v1/products/{id}")
-    ResponseEntity<?> getProductById(@PathVariable Long id);
+    ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable Long id);
 
     @PostMapping("/api/v1/products/{id}/decrease-stock")
-    ResponseEntity<?> decreaseStock(@PathVariable Long id, @RequestParam int quantity);
+    ResponseEntity<ApiResponse<String>> decreaseProductStock(@PathVariable Long id, @RequestParam int quantity);
 }
