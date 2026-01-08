@@ -44,6 +44,13 @@ spring:
               args:
                 requiredRoles: ROLE_ADMIN
 
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: AuthenticationFilter
+
 
 server:
   port: 8082

@@ -20,6 +20,10 @@ public class OrderDto {
     private Long userId;
     private BigDecimal totalAmount;
     private OrderStatus status;
+    private String note;
+    private String recipientPhone;
+    private String shippingAddress;
+    private String recipientName;
     private Instant createdAt;
     private Instant updatedAt;
     private List<OrderItemDto> items;
