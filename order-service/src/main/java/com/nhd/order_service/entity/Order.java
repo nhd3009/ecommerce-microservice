@@ -40,6 +40,7 @@ public class Order {
     private OrderStatus status;
 
     private BigDecimal totalAmount;
+    private String note;
 
     private Instant createdAt;
     private Instant updatedAt;
