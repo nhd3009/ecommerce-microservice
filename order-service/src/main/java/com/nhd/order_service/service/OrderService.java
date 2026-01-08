@@ -70,7 +70,15 @@ public class OrderService {
         } 
 
 
-        Order order = Order.builder().userId(user.getId()).totalAmount(totalPrice).status(OrderStatus.PENDING).build(); 
+        Order order = Order.builder()
+                            .userId(user.getId())
+                            .totalAmount(totalPrice)
+                            .status(OrderStatus.PENDING)
+                            .note(request.getNote())
+                            .recipientPhone(request.getRecipientPhone())
+                            .shippingAddress(request.getShippingAddress())
+                            .recipientName(request.getRecipientName())
+                            .build(); 
         orderItems.forEach(item -> item.setOrder(order)); 
         order.setItems(orderItems); 
         Order savedOrder = orderRepository.save(order); 
@@ -84,8 +92,13 @@ public class OrderService {
                                     .id(savedOrder.getId())
                                     .userId(savedOrder.getUserId())
                                     .totalAmount(savedOrder.getTotalAmount())
+                                    .note(savedOrder.getNote())
+                                    .recipientPhone(savedOrder.getRecipientPhone())
+                                    .shippingAddress(savedOrder.getShippingAddress())
+                                    .recipientName(savedOrder.getRecipientName())
                                     .status(savedOrder.getStatus())
                                     .createdAt(savedOrder.getCreatedAt())
+                                    .updatedAt(savedOrder.getUpdatedAt())
                                     .items(itemDtos)
                                     .build(); 
         return new ApiResponse<>(dto, HttpStatus.CREATED.value(), "Order placed successfully"); }

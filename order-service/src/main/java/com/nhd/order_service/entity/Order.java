@@ -41,6 +41,9 @@ public class Order {
 
     private BigDecimal totalAmount;
     private String note;
+    private String recipientPhone;
+    private String shippingAddress;
+    private String recipientName;
 
     private Instant createdAt;
     private Instant updatedAt;
