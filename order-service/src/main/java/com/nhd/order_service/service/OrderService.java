@@ -43,9 +43,7 @@ public class OrderService {
     
     public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) { 
 
-        ApiResponse<UserDto> authResponse = authClient.verifyToken(bearerToken); 
-        if (authResponse.getData() == null) 
-            throw new UnauthorizedException("Invalid or missing token"); UserDto user = authResponse.getData(); 
+        UserDto user = getUserFromToken(bearerToken); 
         
         List<OrderItem> orderItems = new ArrayList<>(); 
         BigDecimal totalPrice = BigDecimal.ZERO; 
@@ -101,5 +99,50 @@ public class OrderService {
                                     .updatedAt(savedOrder.getUpdatedAt())
                                     .items(itemDtos)
                                     .build(); 
-        return new ApiResponse<>(dto, HttpStatus.CREATED.value(), "Order placed successfully"); }
+        return new ApiResponse<>(dto, HttpStatus.CREATED.value(), "Order placed successfully"); 
+    }
+
+    public ApiResponse<OrderDto> getOrderById(Long orderId, String bearerToken) {
+        UserDto user = getUserFromToken(bearerToken);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (!order.getUserId().equals(user.getId()) && user.getRoles().equals("ROLE_USER")) {
+            throw new UnauthorizedException("You are not authorized to view this order");
+        }
+
+        List<OrderItemDto> itemDtos = order.getItems()
+                .stream()
+                .map(i -> new OrderItemDto(i.getProductId(), i.getProductName(), i.getPrice(), i.getQuantity(), i.getSubTotal()))
+                .toList();
+
+        OrderDto dto = OrderDto.builder()
+                .id(order.getId())
+                .userId(order.getUserId())
+                .totalAmount(order.getTotalAmount())
+                .note(order.getNote())
+                .recipientPhone(order.getRecipientPhone())
+                .shippingAddress(order.getShippingAddress())
+                .recipientName(order.getRecipientName())
+                .status(order.getStatus())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .items(itemDtos)
+                .build();
+
+        return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order retrieved successfully");
+    }
+
+    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus status, String bearerToken) {
+
+        return new ApiResponse<>(null, HttpStatus.OK.value(), "Not implemented yet");
+    }
+
+    public UserDto getUserFromToken(String bearerToken) {
+        ApiResponse<UserDto> authResponse = authClient.verifyToken(bearerToken);
+        if (authResponse.getData() == null)
+            throw new UnauthorizedException("Invalid or missing token");
+        return authResponse.getData();
+    }
 }
