@@ -4,6 +4,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +30,7 @@ import com.nhd.order_service.repository.OrderRepository;
 import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.request.OrderItemRequest;
 import com.nhd.order_service.response.ApiResponse;
+import com.nhd.order_service.response.PageResponse;
 
 @Service
 public class OrderService {
@@ -108,7 +113,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
-        if (!order.getUserId().equals(user.getId()) && user.getRoles().equals("ROLE_USER")) {
+        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
+
+        if (!isAdminOrEmployee && !order.getUserId().equals(user.getId())) {
             throw new UnauthorizedException("You are not authorized to view this order");
         }
 
@@ -134,8 +141,57 @@ public class OrderService {
         return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order retrieved successfully");
     }
 
-    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus status, String bearerToken) {
+    public ApiResponse<PageResponse<OrderDto>> getAllOrderFromUser(String bearerToken, int page, int size) {
+        UserDto user = getUserFromToken(bearerToken);
 
+        Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
+
+        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
+
+        Page<Order> ordersPage;
+        if (isAdminOrEmployee) {
+            ordersPage = orderRepository.findAll(pageable);
+        } else {
+            ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
+        }
+
+        List<OrderDto> orderDtos = ordersPage.getContent().stream().map(order -> {
+            List<OrderItemDto> itemDtos = order.getItems().stream()
+                    .map(i -> new OrderItemDto(
+                            i.getProductId(),
+                            i.getProductName(),
+                            i.getPrice(),
+                            i.getQuantity(),
+                            i.getSubTotal()))
+                    .toList();
+
+            return OrderDto.builder()
+                    .id(order.getId())
+                    .userId(order.getUserId())
+                    .totalAmount(order.getTotalAmount())
+                    .note(order.getNote())
+                    .recipientPhone(order.getRecipientPhone())
+                    .shippingAddress(order.getShippingAddress())
+                    .recipientName(order.getRecipientName())
+                    .status(order.getStatus())
+                    .createdAt(order.getCreatedAt())
+                    .updatedAt(order.getUpdatedAt())
+                    .items(itemDtos)
+                    .build();
+        }).toList();
+
+        PageResponse<OrderDto> response = PageResponse.<OrderDto>builder()
+                .data(orderDtos)
+                .currentPage(ordersPage.getNumber())
+                .pageSize(ordersPage.getSize())
+                .totalElements(ordersPage.getTotalElements())
+                .totalPages(ordersPage.getTotalPages())
+                .build();
+
+        return new ApiResponse<>(response, HttpStatus.OK.value(), "Orders retrieved successfully");
+    }
+
+    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus status, String bearerToken) {
         return new ApiResponse<>(null, HttpStatus.OK.value(), "Not implemented yet");
     }
 

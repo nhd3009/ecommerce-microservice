@@ -11,6 +11,7 @@ import com.nhd.order_service.dto.OrderDto;
 import com.nhd.order_service.exception.UnauthorizedException;
 import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.response.ApiResponse;
+import com.nhd.order_service.response.PageResponse;
 import com.nhd.order_service.service.OrderService;
 
 import lombok.AllArgsConstructor;
@@ -62,6 +63,27 @@ public class OrderController {
             throw new UnauthorizedException("Missing token");
         }
         return orderService.getOrderById(id, token);
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<OrderDto>> getAllOrders(
+        @RequestHeader(value = "Authorization", required = false) String bearerToken,
+        @CookieValue(value = "accessToken", required = false) String accessToken,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ){
+        String token = null;
+
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            token = bearerToken;
+        } else if (accessToken != null) {
+            token = "Bearer " + accessToken;
+        }
+
+        if (token == null) {
+            throw new UnauthorizedException("Missing token");
+        }
+        return orderService.getAllOrderFromUser(token, page, size);
     }
     
 }
