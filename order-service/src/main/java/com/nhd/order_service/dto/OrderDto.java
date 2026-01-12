@@ -24,6 +24,8 @@ public class OrderDto {
     private String recipientPhone;
     private String shippingAddress;
     private String recipientName;
+    private String deliveryProvider;
+    private String trackingNumber;
     private Instant createdAt;
     private Instant updatedAt;
     private List<OrderItemDto> items;

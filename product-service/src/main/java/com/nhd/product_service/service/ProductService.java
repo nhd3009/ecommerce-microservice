@@ -206,7 +206,7 @@ public class ProductService {
     }
 
     @Transactional
-    public ApiResponse<String> decreaseStock(Long productId, int quantity) {
+    public ApiResponse<String> adjustStock(Long productId, int quantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
 

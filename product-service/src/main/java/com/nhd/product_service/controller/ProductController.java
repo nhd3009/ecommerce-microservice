@@ -45,10 +45,10 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
-    @PostMapping("/{id}/decrease-stock")
-    public ResponseEntity<ApiResponse<String>> decreaseProductStock(@PathVariable("id") Long id,
+    @PostMapping("/{id}/adjust-stock")
+    public ResponseEntity<ApiResponse<String>> adjustProductStock(@PathVariable("id") Long id,
             @RequestParam("quantity") int quantity) {
-        return ResponseEntity.ok(productService.decreaseStock(id, quantity));
+        return ResponseEntity.ok(productService.adjustStock(id, quantity));
     }
 
     @GetMapping("/category/{categoryId}")

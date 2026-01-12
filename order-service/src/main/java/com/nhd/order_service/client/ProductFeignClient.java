@@ -15,6 +15,6 @@ public interface ProductFeignClient {
     @GetMapping("/api/v1/products/{id}")
     ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable Long id);
 
-    @PostMapping("/api/v1/products/{id}/decrease-stock")
-    ResponseEntity<ApiResponse<String>> decreaseProductStock(@PathVariable Long id, @RequestParam int quantity);
+    @PostMapping("/api/v1/products/{id}/adjust-stock")
+    ResponseEntity<ApiResponse<String>> adjustProductStock(@PathVariable Long id, @RequestParam int quantity);
 }
