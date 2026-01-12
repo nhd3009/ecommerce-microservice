@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -31,17 +32,16 @@ import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.request.OrderItemRequest;
 import com.nhd.order_service.response.ApiResponse;
 import com.nhd.order_service.response.PageResponse;
+import com.nhd.order_service.specification.OrderSpecification;
 
 @Service
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final AuthFeignClient authClient;
     private final ProductFeignClient productClient;
 
-    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, AuthFeignClient authClient, ProductFeignClient productClient) {
+    public OrderService(OrderRepository orderRepository, AuthFeignClient authClient, ProductFeignClient productClient) {
         this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
         this.authClient = authClient;
         this.productClient = productClient;
     }
@@ -132,6 +132,8 @@ public class OrderService {
                 .recipientPhone(order.getRecipientPhone())
                 .shippingAddress(order.getShippingAddress())
                 .recipientName(order.getRecipientName())
+                .deliveryProvider(order.getDeliveryProvider())
+                .trackingNumber(order.getTrackingNumber())
                 .status(order.getStatus())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
@@ -141,19 +143,12 @@ public class OrderService {
         return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order retrieved successfully");
     }
 
-    public ApiResponse<PageResponse<OrderDto>> getAllOrderFromUser(String bearerToken, int page, int size) {
+    public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(String bearerToken, int page, int size) {
         UserDto user = getUserFromToken(bearerToken);
 
         Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
 
-        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
-
-        Page<Order> ordersPage;
-        if (isAdminOrEmployee) {
-            ordersPage = orderRepository.findAll(pageable);
-        } else {
-            ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
-        }
+        Page<Order> ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
 
         List<OrderDto> orderDtos = ordersPage.getContent().stream().map(order -> {
             List<OrderItemDto> itemDtos = order.getItems().stream()
@@ -173,6 +168,61 @@ public class OrderService {
                     .recipientPhone(order.getRecipientPhone())
                     .shippingAddress(order.getShippingAddress())
                     .recipientName(order.getRecipientName())
+                    .deliveryProvider(order.getDeliveryProvider())
+                    .trackingNumber(order.getTrackingNumber())
+                    .status(order.getStatus())
+                    .createdAt(order.getCreatedAt())
+                    .updatedAt(order.getUpdatedAt())
+                    .items(itemDtos)
+                    .build();
+        }).toList();
+
+        PageResponse<OrderDto> response = PageResponse.<OrderDto>builder()
+                .data(orderDtos)
+                .currentPage(ordersPage.getNumber())
+                .pageSize(ordersPage.getSize())
+                .totalElements(ordersPage.getTotalElements())
+                .totalPages(ordersPage.getTotalPages())
+                .build();
+
+        return new ApiResponse<>(response, HttpStatus.OK.value(), "Orders retrieved successfully");
+    }
+
+    public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(String bearerToken, OrderStatus status, Long userId, LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
+        UserDto user = getUserFromToken(bearerToken);
+        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
+        if (!isAdminOrEmployee)
+            throw new UnauthorizedException("Access denied: Admin or Employee only");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
+
+        Specification<Order> spec = Specification
+                .where(OrderSpecification.hasStatus(status))
+                .and(OrderSpecification.hasUserId(userId))
+                .and(OrderSpecification.createdAfter(fromDate))
+                .and(OrderSpecification.createdBefore(toDate));
+
+        Page<Order> ordersPage = orderRepository.findAll(spec, pageable);
+        List<OrderDto> orderDtos = ordersPage.getContent().stream().map(order -> {
+            List<OrderItemDto> itemDtos = order.getItems().stream()
+                    .map(i -> new OrderItemDto(
+                            i.getProductId(),
+                            i.getProductName(),
+                            i.getPrice(),
+                            i.getQuantity(),
+                            i.getSubTotal()))
+                    .toList();
+
+            return OrderDto.builder()
+                    .id(order.getId())
+                    .userId(order.getUserId())
+                    .totalAmount(order.getTotalAmount())
+                    .note(order.getNote())
+                    .recipientPhone(order.getRecipientPhone())
+                    .shippingAddress(order.getShippingAddress())
+                    .recipientName(order.getRecipientName())
+                    .deliveryProvider(order.getDeliveryProvider())
+                    .trackingNumber(order.getTrackingNumber())
                     .status(order.getStatus())
                     .createdAt(order.getCreatedAt())
                     .updatedAt(order.getUpdatedAt())
