@@ -1,6 +1,7 @@
 package com.nhd.order_service.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +9,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -63,7 +63,7 @@ public class OrderService {
             } 
 
 
-            productClient.decreaseProductStock(product.getId(), itemReq.getQuantity());
+            productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
             BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())); 
             totalPrice = totalPrice.add(subTotal); 
 
@@ -191,8 +191,88 @@ public class OrderService {
         return new ApiResponse<>(response, HttpStatus.OK.value(), "Orders retrieved successfully");
     }
 
-    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus status, String bearerToken) {
-        return new ApiResponse<>(null, HttpStatus.OK.value(), "Not implemented yet");
+    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus newStatus, String deliveryProvider, String trackingNumber, String bearerToken){
+        UserDto user = getUserFromToken(bearerToken);
+
+        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+        boolean isEmployee = user.getRoles().contains("ROLE_EMPLOYEE");
+        boolean isUser = user.getRoles().contains("ROLE_USER");
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BadRequestException("Cancelled orders cannot be modified. Please create a new order instead.");
+        }
+        if (isUser) {
+            if (!order.getUserId().equals(user.getId())) {
+                throw new UnauthorizedException("You cannot update someone else's order");
+            }
+            if (newStatus != OrderStatus.CANCELLED) {
+                throw new UnauthorizedException("You can only cancel your own order");
+            }
+            if (order.getStatus() != OrderStatus.PENDING) {
+                throw new BadRequestException("You can only cancel orders that are still pending");
+            }
+        }
+
+        if (isEmployee) {
+            if (newStatus == OrderStatus.CANCELLED) {
+                throw new UnauthorizedException("Employees cannot cancel orders");
+            }
+        }
+
+        if (newStatus == OrderStatus.SHIPPED) {
+            if (deliveryProvider == null || trackingNumber == null) {
+                throw new BadRequestException("Must provide deliveryProvider and trackingNumber when marking as SHIPPED");
+            }
+            if (order.getStatus() != OrderStatus.PROCESSING) {
+                throw new BadRequestException("Order must be in PROCESSING before being marked as SHIPPED");
+            }
+
+            order.setDeliveryProvider(deliveryProvider);
+            order.setTrackingNumber(trackingNumber);
+        }
+        if (!OrderStatus.canTransition(order.getStatus(), newStatus)) {
+            throw new BadRequestException("Invalid order status transition");
+        }
+
+        if (newStatus == OrderStatus.CANCELLED && (isUser || isAdmin)) {
+            if (order.getStatus() != OrderStatus.CANCELLED) {
+                for (OrderItem item : order.getItems()) {
+                    productClient.adjustProductStock(item.getProductId(), -item.getQuantity());
+                }
+            }
+        }
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+
+        List<OrderItemDto> itemDtos = order.getItems().stream()
+                .map(i -> new OrderItemDto(
+                        i.getProductId(),
+                        i.getProductName(),
+                        i.getPrice(),
+                        i.getQuantity(),
+                        i.getSubTotal()))
+                .toList();
+
+        OrderDto dto = OrderDto.builder()
+                .id(order.getId())
+                .userId(order.getUserId())
+                .totalAmount(order.getTotalAmount())
+                .note(order.getNote())
+                .recipientPhone(order.getRecipientPhone())
+                .shippingAddress(order.getShippingAddress())
+                .recipientName(order.getRecipientName())
+                .status(order.getStatus())
+                .deliveryProvider(order.getDeliveryProvider())
+                .trackingNumber(order.getTrackingNumber())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .items(itemDtos)
+                .build();
+
+        return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order status updated successfully");
     }
 
     public UserDto getUserFromToken(String bearerToken) {
