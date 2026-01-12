@@ -1,5 +1,7 @@
 package com.nhd.order_service.controller;
 
+import java.time.LocalDateTime;
+
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nhd.order_service.dto.OrderDto;
+import com.nhd.order_service.enums.OrderStatus;
 import com.nhd.order_service.exception.UnauthorizedException;
 import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.request.UpdateOrderStatusRequest;
@@ -68,8 +71,8 @@ public class OrderController {
         return orderService.getOrderById(id, token);
     }
 
-    @GetMapping
-    public ApiResponse<PageResponse<OrderDto>> getAllOrders(
+    @GetMapping("/my-orders")
+    public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken,
         @RequestParam(defaultValue = "0") int page,
@@ -86,7 +89,32 @@ public class OrderController {
         if (token == null) {
             throw new UnauthorizedException("Missing token");
         }
-        return orderService.getAllOrderFromUser(token, page, size);
+        return orderService.getAllMyOrder(token, page, size);
+    }
+
+    @GetMapping("/admin")
+    public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(
+        @RequestHeader(value = "Authorization", required = false) String bearerToken,
+        @CookieValue(value = "accessToken", required = false) String accessToken,
+        @RequestParam(required = false) OrderStatus status,
+        @RequestParam(required = false) Long userId,
+        @RequestParam(required = false) LocalDateTime fromDate,
+        @RequestParam(required = false) LocalDateTime toDate,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        String token = null;
+
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            token = bearerToken;
+        } else if (accessToken != null) {
+            token = "Bearer " + accessToken;
+        }
+
+        if (token == null) {
+            throw new UnauthorizedException("Missing token");
+        }
+        return orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size);
     }
 
     @PutMapping("/{id}/status")
