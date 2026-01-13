@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nhd.order_service.client.AuthFeignClient;
 import com.nhd.order_service.client.ProductFeignClient;
@@ -26,7 +27,8 @@ import com.nhd.order_service.enums.OrderStatus;
 import com.nhd.order_service.exception.BadRequestException;
 import com.nhd.order_service.exception.ResourceNotFoundException;
 import com.nhd.order_service.exception.UnauthorizedException;
-import com.nhd.order_service.repository.OrderItemRepository;
+import com.nhd.order_service.mapper.OrderMapper;
+import com.nhd.order_service.mapper.PageResponseMapper;
 import com.nhd.order_service.repository.OrderRepository;
 import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.request.OrderItemRequest;
@@ -39,6 +41,9 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final AuthFeignClient authClient;
     private final ProductFeignClient productClient;
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
+    private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+    private static final String ROLE_USER = "ROLE_USER";
 
     public OrderService(OrderRepository orderRepository, AuthFeignClient authClient, ProductFeignClient productClient) {
         this.orderRepository = orderRepository;
@@ -46,6 +51,7 @@ public class OrderService {
         this.productClient = productClient;
     }
     
+    @Transactional
     public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) { 
 
         UserDto user = getUserFromToken(bearerToken); 
@@ -62,16 +68,13 @@ public class OrderService {
                 throw new BadRequestException("Not enough stock for product: " + product.getName()); 
             } 
 
-
             productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
             BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())); 
             totalPrice = totalPrice.add(subTotal); 
 
-
             OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build(); 
             orderItems.add(orderItem); 
         } 
-
 
         Order order = Order.builder()
                             .userId(user.getId())
@@ -87,24 +90,7 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order); 
 
         
-        List<OrderItemDto> itemDtos = savedOrder.getItems()
-                                            .stream()
-                                            .map(i -> new OrderItemDto(i.getProductId(), i.getProductName(), i.getPrice(), i.getQuantity(), i.getSubTotal()))
-                                            .toList(); 
-        OrderDto dto = OrderDto.builder()
-                                    .id(savedOrder.getId())
-                                    .userId(savedOrder.getUserId())
-                                    .totalAmount(savedOrder.getTotalAmount())
-                                    .note(savedOrder.getNote())
-                                    .recipientPhone(savedOrder.getRecipientPhone())
-                                    .shippingAddress(savedOrder.getShippingAddress())
-                                    .recipientName(savedOrder.getRecipientName())
-                                    .status(savedOrder.getStatus())
-                                    .createdAt(savedOrder.getCreatedAt())
-                                    .updatedAt(savedOrder.getUpdatedAt())
-                                    .items(itemDtos)
-                                    .build(); 
-        return new ApiResponse<>(dto, HttpStatus.CREATED.value(), "Order placed successfully"); 
+        return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
     }
 
     public ApiResponse<OrderDto> getOrderById(Long orderId, String bearerToken) {
@@ -113,34 +99,13 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
-        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
+        boolean isAdminOrEmployee = user.getRoles().contains(ROLE_ADMIN) || user.getRoles().contains(ROLE_EMPLOYEE);
 
         if (!isAdminOrEmployee && !order.getUserId().equals(user.getId())) {
             throw new UnauthorizedException("You are not authorized to view this order");
         }
 
-        List<OrderItemDto> itemDtos = order.getItems()
-                .stream()
-                .map(i -> new OrderItemDto(i.getProductId(), i.getProductName(), i.getPrice(), i.getQuantity(), i.getSubTotal()))
-                .toList();
-
-        OrderDto dto = OrderDto.builder()
-                .id(order.getId())
-                .userId(order.getUserId())
-                .totalAmount(order.getTotalAmount())
-                .note(order.getNote())
-                .recipientPhone(order.getRecipientPhone())
-                .shippingAddress(order.getShippingAddress())
-                .recipientName(order.getRecipientName())
-                .deliveryProvider(order.getDeliveryProvider())
-                .trackingNumber(order.getTrackingNumber())
-                .status(order.getStatus())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .items(itemDtos)
-                .build();
-
-        return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order retrieved successfully");
+        return new ApiResponse<>(OrderMapper.toOrderDto(order), HttpStatus.OK.value(), "Order retrieved successfully");
     }
 
     public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(String bearerToken, int page, int size) {
@@ -149,48 +114,14 @@ public class OrderService {
         Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
 
         Page<Order> ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
+        Page<OrderDto> dtoPage = ordersPage.map(OrderMapper::toOrderDto);
 
-        List<OrderDto> orderDtos = ordersPage.getContent().stream().map(order -> {
-            List<OrderItemDto> itemDtos = order.getItems().stream()
-                    .map(i -> new OrderItemDto(
-                            i.getProductId(),
-                            i.getProductName(),
-                            i.getPrice(),
-                            i.getQuantity(),
-                            i.getSubTotal()))
-                    .toList();
-
-            return OrderDto.builder()
-                    .id(order.getId())
-                    .userId(order.getUserId())
-                    .totalAmount(order.getTotalAmount())
-                    .note(order.getNote())
-                    .recipientPhone(order.getRecipientPhone())
-                    .shippingAddress(order.getShippingAddress())
-                    .recipientName(order.getRecipientName())
-                    .deliveryProvider(order.getDeliveryProvider())
-                    .trackingNumber(order.getTrackingNumber())
-                    .status(order.getStatus())
-                    .createdAt(order.getCreatedAt())
-                    .updatedAt(order.getUpdatedAt())
-                    .items(itemDtos)
-                    .build();
-        }).toList();
-
-        PageResponse<OrderDto> response = PageResponse.<OrderDto>builder()
-                .data(orderDtos)
-                .currentPage(ordersPage.getNumber())
-                .pageSize(ordersPage.getSize())
-                .totalElements(ordersPage.getTotalElements())
-                .totalPages(ordersPage.getTotalPages())
-                .build();
-
-        return new ApiResponse<>(response, HttpStatus.OK.value(), "Orders retrieved successfully");
+        return new ApiResponse<>(PageResponseMapper.fromPage(dtoPage), HttpStatus.OK.value(), "Orders retrieved successfully");
     }
 
     public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(String bearerToken, OrderStatus status, Long userId, LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
         UserDto user = getUserFromToken(bearerToken);
-        boolean isAdminOrEmployee = user.getRoles().contains("ROLE_ADMIN") || user.getRoles().contains("ROLE_EMPLOYEE");
+        boolean isAdminOrEmployee = user.getRoles().contains(ROLE_ADMIN) || user.getRoles().contains(ROLE_EMPLOYEE);
         if (!isAdminOrEmployee)
             throw new UnauthorizedException("Access denied: Admin or Employee only");
 
@@ -202,58 +133,27 @@ public class OrderService {
                 .and(OrderSpecification.createdAfter(fromDate))
                 .and(OrderSpecification.createdBefore(toDate));
 
-        Page<Order> ordersPage = orderRepository.findAll(spec, pageable);
-        List<OrderDto> orderDtos = ordersPage.getContent().stream().map(order -> {
-            List<OrderItemDto> itemDtos = order.getItems().stream()
-                    .map(i -> new OrderItemDto(
-                            i.getProductId(),
-                            i.getProductName(),
-                            i.getPrice(),
-                            i.getQuantity(),
-                            i.getSubTotal()))
-                    .toList();
-
-            return OrderDto.builder()
-                    .id(order.getId())
-                    .userId(order.getUserId())
-                    .totalAmount(order.getTotalAmount())
-                    .note(order.getNote())
-                    .recipientPhone(order.getRecipientPhone())
-                    .shippingAddress(order.getShippingAddress())
-                    .recipientName(order.getRecipientName())
-                    .deliveryProvider(order.getDeliveryProvider())
-                    .trackingNumber(order.getTrackingNumber())
-                    .status(order.getStatus())
-                    .createdAt(order.getCreatedAt())
-                    .updatedAt(order.getUpdatedAt())
-                    .items(itemDtos)
-                    .build();
-        }).toList();
-
-        PageResponse<OrderDto> response = PageResponse.<OrderDto>builder()
-                .data(orderDtos)
-                .currentPage(ordersPage.getNumber())
-                .pageSize(ordersPage.getSize())
-                .totalElements(ordersPage.getTotalElements())
-                .totalPages(ordersPage.getTotalPages())
-                .build();
-
-        return new ApiResponse<>(response, HttpStatus.OK.value(), "Orders retrieved successfully");
+        Page<OrderDto> dtoPage = orderRepository.findAll(spec, pageable).map(OrderMapper::toOrderDto);
+        return new ApiResponse<>(PageResponseMapper.fromPage(dtoPage), HttpStatus.OK.value(), "Orders retrieved successfully");
     }
 
     public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus newStatus, String deliveryProvider, String trackingNumber, String bearerToken){
         UserDto user = getUserFromToken(bearerToken);
 
-        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
-        boolean isEmployee = user.getRoles().contains("ROLE_EMPLOYEE");
-        boolean isUser = user.getRoles().contains("ROLE_USER");
+        boolean isAdmin = user.getRoles().contains(ROLE_ADMIN);
+        boolean isEmployee = user.getRoles().contains(ROLE_EMPLOYEE);
+        boolean isUser = user.getRoles().contains(ROLE_USER);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+        if (newStatus == null) throw new BadRequestException("Order status must not be null");
 
+        // Cancel order cannot be modified
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new BadRequestException("Cancelled orders cannot be modified. Please create a new order instead.");
         }
+
+        // For user role
         if (isUser) {
             if (!order.getUserId().equals(user.getId())) {
                 throw new UnauthorizedException("You cannot update someone else's order");
@@ -266,12 +166,14 @@ public class OrderService {
             }
         }
 
+        // For employee role
         if (isEmployee) {
             if (newStatus == OrderStatus.CANCELLED) {
                 throw new UnauthorizedException("Employees cannot cancel orders");
             }
         }
 
+        // Shipped order rule
         if (newStatus == OrderStatus.SHIPPED) {
             if (deliveryProvider == null || trackingNumber == null) {
                 throw new BadRequestException("Must provide deliveryProvider and trackingNumber when marking as SHIPPED");
@@ -283,11 +185,17 @@ public class OrderService {
             order.setDeliveryProvider(deliveryProvider);
             order.setTrackingNumber(trackingNumber);
         }
+
+        // Order status rule
         if (!OrderStatus.canTransition(order.getStatus(), newStatus)) {
             throw new BadRequestException("Invalid order status transition");
         }
 
+        // Return stock when order is cancelled
         if (newStatus == OrderStatus.CANCELLED && (isUser || isAdmin)) {
+            if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED){
+                throw new BadRequestException("Cannot cancel a shipped or completed order");
+            }
             if (order.getStatus() != OrderStatus.CANCELLED) {
                 for (OrderItem item : order.getItems()) {
                     productClient.adjustProductStock(item.getProductId(), -item.getQuantity());
@@ -297,32 +205,7 @@ public class OrderService {
         order.setStatus(newStatus);
         orderRepository.save(order);
 
-        List<OrderItemDto> itemDtos = order.getItems().stream()
-                .map(i -> new OrderItemDto(
-                        i.getProductId(),
-                        i.getProductName(),
-                        i.getPrice(),
-                        i.getQuantity(),
-                        i.getSubTotal()))
-                .toList();
-
-        OrderDto dto = OrderDto.builder()
-                .id(order.getId())
-                .userId(order.getUserId())
-                .totalAmount(order.getTotalAmount())
-                .note(order.getNote())
-                .recipientPhone(order.getRecipientPhone())
-                .shippingAddress(order.getShippingAddress())
-                .recipientName(order.getRecipientName())
-                .status(order.getStatus())
-                .deliveryProvider(order.getDeliveryProvider())
-                .trackingNumber(order.getTrackingNumber())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .items(itemDtos)
-                .build();
-
-        return new ApiResponse<>(dto, HttpStatus.OK.value(), "Order status updated successfully");
+        return new ApiResponse<>(OrderMapper.toOrderDto(order), HttpStatus.OK.value(), "Order status updated successfully");
     }
 
     public UserDto getUserFromToken(String bearerToken) {
