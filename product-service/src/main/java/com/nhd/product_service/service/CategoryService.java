@@ -14,6 +14,9 @@ import com.nhd.product_service.response.ApiResponse;
 
 import java.util.List;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -25,11 +28,15 @@ public class CategoryService {
     this.categoryRepository = categoryRepository;
   }
 
+  @Cacheable(value = "categories", key = "'all'")
   public ApiResponse<List<CategoryDto>> getAllCategories() {
     List<CategoryDto> categories = categoryRepository.findAll().stream().map(CategoryMapper::toDto).toList();
     return new ApiResponse<>(HttpStatus.OK.value(), "Categories retrieved successfully", categories);
   }
 
+  @Caching(evict = {
+    @CacheEvict(value = "categories", key = "'all'")
+  })
   public ApiResponse<CategoryDto> create(CreateCategoryRequest request) {
     if (categoryRepository.findByName(request.getName()).isPresent()) {
       throw new DuplicateException("Category name already exists");
@@ -45,12 +52,17 @@ public class CategoryService {
     return new ApiResponse<>(HttpStatus.CREATED.value(), "Category created successfully", CategoryMapper.toDto(saved));
   }
 
+  @Cacheable(value = "category", key = "#id")
   public ApiResponse<CategoryDto> getCategoryById(Long id) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
     return new ApiResponse<>(HttpStatus.OK.value(), "Category retrieved successfully", CategoryMapper.toDto(category));
   }
 
+  @Caching(evict = {
+    @CacheEvict(value = "category", key = "#id"),
+    @CacheEvict(value = "categories", key = "'all'")
+  })
   public ApiResponse<CategoryDto> updateCategory(Long id, UpdateCategoryRequest request) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
@@ -62,6 +74,10 @@ public class CategoryService {
     return new ApiResponse<>(HttpStatus.OK.value(), "Category updated successfully", CategoryMapper.toDto(updated));
   }
 
+  @Caching(evict = {
+    @CacheEvict(value = "category", key = "#id"),
+    @CacheEvict(value = "categories", key = "'all'")
+  })
   public ApiResponse<String> updateCategoryStatus(Long id) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
@@ -81,6 +97,10 @@ public class CategoryService {
         "Category " + id + " status changed from " + currentStatus + " to " + newStatus);
   }
 
+  @Caching(evict = {
+    @CacheEvict(value = "category", key = "#id"),
+    @CacheEvict(value = "categories", key = "'all'")
+  })
   public ApiResponse<String> deleteCategory(Long id) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
