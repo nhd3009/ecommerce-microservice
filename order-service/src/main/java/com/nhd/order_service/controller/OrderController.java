@@ -38,17 +38,7 @@ public class OrderController {
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken) {
 
-        String token = null;
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken;
-        } else if (accessToken != null) {
-            token = "Bearer " + accessToken;
-        }
-
-        if (token == null) {
-            throw new UnauthorizedException("Missing token");
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
 
         return orderService.placeOrder(request, token);
     }
@@ -57,17 +47,7 @@ public class OrderController {
     public ApiResponse<OrderDto> getOrderId(@RequestHeader(value = "Authorization", required = false) String bearerToken,
                                             @CookieValue(value = "accessToken", required = false) String accessToken,
                                             @PathVariable("id") Long id) {
-        String token = null;
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken;
-        } else if (accessToken != null) {
-            token = "Bearer " + accessToken;
-        }
-
-        if (token == null) {
-            throw new UnauthorizedException("Missing token");
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
         return orderService.getOrderById(id, token);
     }
 
@@ -78,17 +58,7 @@ public class OrderController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ){
-        String token = null;
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken;
-        } else if (accessToken != null) {
-            token = "Bearer " + accessToken;
-        }
-
-        if (token == null) {
-            throw new UnauthorizedException("Missing token");
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
         return orderService.getAllMyOrder(token, page, size);
     }
 
@@ -103,17 +73,7 @@ public class OrderController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
-        String token = null;
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken;
-        } else if (accessToken != null) {
-            token = "Bearer " + accessToken;
-        }
-
-        if (token == null) {
-            throw new UnauthorizedException("Missing token");
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
         return orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size);
     }
 
@@ -122,17 +82,7 @@ public class OrderController {
             @RequestBody UpdateOrderStatusRequest request,
             @RequestHeader(value = "Authorization", required = false) String bearerToken,
             @CookieValue(value = "accessToken", required = false) String accessToken) {
-        String token = null;
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken;
-        } else if (accessToken != null) {
-            token = "Bearer " + accessToken;
-        }
-
-        if (token == null) {
-            throw new UnauthorizedException("Missing token");
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
         return orderService.updateOrderStatus(orderId, request.getStatus(), request.getDeliveryProvider(), request.getTrackingNumber(), token);
     }
     
