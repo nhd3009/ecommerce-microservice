@@ -175,7 +175,7 @@ public class OrderService {
 
         // Shipped order rule
         if (newStatus == OrderStatus.SHIPPED) {
-            if (deliveryProvider == null || trackingNumber == null) {
+            if (deliveryProvider == null || deliveryProvider.isEmpty() || trackingNumber == null || trackingNumber.isEmpty()) {
                 throw new BadRequestException("Must provide deliveryProvider and trackingNumber when marking as SHIPPED");
             }
             if (order.getStatus() != OrderStatus.PROCESSING) {
