@@ -214,4 +214,19 @@ public class OrderService {
             throw new UnauthorizedException("Invalid or missing token");
         return authResponse.getData();
     }
+
+    public String getToken(String bearerToken, String accessToken){
+        String token = null;
+
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            token = bearerToken;
+        } else if (accessToken != null) {
+            token = "Bearer " + accessToken;
+        }
+
+        if (token == null) {
+            throw new UnauthorizedException("Missing token");
+        }
+        return token;
+    }
 }
