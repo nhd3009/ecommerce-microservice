@@ -145,8 +145,13 @@ public class ProductService {
     }
 
     @Transactional
-    @CachePut(value = "product", key = "#id")
-    @CacheEvict(value = "product_pages", allEntries = true)
+    @Caching(
+        put = @CachePut(value = "product", key = "#id"),
+        evict = {
+                @CacheEvict(value = "product_pages", allEntries = true),
+                @CacheEvict(value = "products_by_category", allEntries = true)
+        }
+    )
     public ApiResponse<ProductDto> updateProduct(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -202,8 +207,14 @@ public class ProductService {
                 dto);
     }
 
-    @CachePut(value = "product", key = "#id")
-    @CacheEvict(value = "product_pages", allEntries = true)
+    @Transactional
+    @Caching(
+        put = @CachePut(value = "product", key = "#id"),
+        evict = {
+                @CacheEvict(value = "product_pages", allEntries = true),
+                @CacheEvict(value = "products_by_category", allEntries = true)
+        }
+    )
     public ApiResponse<String> updateStatusProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -221,7 +232,13 @@ public class ProductService {
     }
 
     @Transactional
-    @CachePut(value = "product", key = "#productId")
+    @Caching(
+        put = @CachePut(value = "product", key = "#id"),
+        evict = {
+                @CacheEvict(value = "product_pages", allEntries = true),
+                @CacheEvict(value = "products_by_category", allEntries = true)
+        }
+    )
     public ApiResponse<String> adjustStock(Long productId, int quantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
@@ -248,7 +265,8 @@ public class ProductService {
 
     @Caching(evict = {
         @CacheEvict(value = "product", key = "#id"),
-        @CacheEvict(value = "product_pages", allEntries = true)
+        @CacheEvict(value = "product_pages", allEntries = true),
+        @CacheEvict(value = "products_by_category", allEntries = true)
     })
     public ApiResponse<String> deleteProduct(Long id) {
         Product product = productRepository.findById(id)

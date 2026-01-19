@@ -1,5 +1,7 @@
 package com.nhd.product_service.service;
 
+import com.nhd.product_service.config.CacheInvalidationPublisher;
+import com.nhd.product_service.dto.CacheInvalidationEvent;
 import com.nhd.product_service.dto.CategoryDto;
 import com.nhd.product_service.entity.Category;
 import com.nhd.product_service.enums.CategoryStatus;
@@ -12,6 +14,7 @@ import com.nhd.product_service.request.CreateCategoryRequest;
 import com.nhd.product_service.request.UpdateCategoryRequest;
 import com.nhd.product_service.response.ApiResponse;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -23,9 +26,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class CategoryService {
   private final CategoryRepository categoryRepository;
+  private final CacheInvalidationPublisher cacheInvalidationPublisher;
 
-  public CategoryService(CategoryRepository categoryRepository) {
+  public CategoryService(CategoryRepository categoryRepository, CacheInvalidationPublisher cacheInvalidationPublisher) {
     this.categoryRepository = categoryRepository;
+    this.cacheInvalidationPublisher = cacheInvalidationPublisher;
   }
 
   @Cacheable(value = "categories", key = "'all'")
@@ -71,6 +76,13 @@ public class CategoryService {
     category.setDescription(request.getDescription());
     category.setStatus(request.getStatus());
     Category updated = categoryRepository.save(category);
+    CacheInvalidationEvent event = CacheInvalidationEvent.builder()
+            .source("CATEGORY_SERVICE")
+            .type("CATEGORY_UPDATED")
+            .entityId(id)
+            .timestamp(LocalDateTime.now())
+            .build();
+    cacheInvalidationPublisher.publish(event);
     return new ApiResponse<>(HttpStatus.OK.value(), "Category updated successfully", CategoryMapper.toDto(updated));
   }
 
@@ -90,7 +102,13 @@ public class CategoryService {
 
     category.setStatus(newStatus);
     categoryRepository.save(category);
-
+    CacheInvalidationEvent event = CacheInvalidationEvent.builder()
+            .source("CATEGORY_SERVICE")
+            .type("CATEGORY_UPDATED")
+            .entityId(id)
+            .timestamp(LocalDateTime.now())
+            .build();
+    cacheInvalidationPublisher.publish(event);
     return new ApiResponse<>(
         HttpStatus.OK.value(),
         "Category status updated successfully",
@@ -110,7 +128,13 @@ public class CategoryService {
     }
 
     categoryRepository.delete(category);
-
+    CacheInvalidationEvent event = CacheInvalidationEvent.builder()
+        .source("CATEGORY_SERVICE")
+        .type("CATEGORY_DELETED")
+        .entityId(id)
+        .timestamp(LocalDateTime.now())
+        .build();
+    cacheInvalidationPublisher.publish(event);
     return new ApiResponse<>(
         HttpStatus.OK.value(),
         "Category deleted successfully",
