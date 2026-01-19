@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +47,7 @@ public class ProductService {
         this.fileStorageService = fileStorageService;
     }
 
+    @Cacheable(value = "product", key = "#id")
     public ApiResponse<ProductDto> getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with ID: " + id + "not found"));
@@ -50,6 +55,7 @@ public class ProductService {
         return new ApiResponse<>(HttpStatus.OK.value(), "Product retrieved successfully", productDto);
     }
 
+    @Cacheable(value = "product_pages", key = "'page_'+#page+'_size_'+#size")
     public ApiResponse<PageResponse<ProductDto>> getAllProducts(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -68,6 +74,7 @@ public class ProductService {
         return new ApiResponse<>(HttpStatus.OK.value(), "Products retrieved successfully", response);
     }
 
+    @Cacheable(value = "products_by_category", key = "'category_'+#categoryId+'_page_'+#page+'_size_'+#size")
     public ApiResponse<PageResponse<ProductDto>> getProductsByCategory(Long categoryId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Product> products = productRepository.findAllByCategoryId(categoryId, pageable);
@@ -104,6 +111,10 @@ public class ProductService {
         return new ApiResponse<>(HttpStatus.OK.value(), "Products retrieved successfully", response);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "product_pages", allEntries = true),
+        @CacheEvict(value = "products_by_category", allEntries = true)
+    })
     public ApiResponse<ProductDto> createProduct(ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow(
                 () -> new ResourceNotFoundException("Category with ID: " + request.getCategoryId() + " not found"));
@@ -134,6 +145,8 @@ public class ProductService {
     }
 
     @Transactional
+    @CachePut(value = "product", key = "#id")
+    @CacheEvict(value = "product_pages", allEntries = true)
     public ApiResponse<ProductDto> updateProduct(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -189,6 +202,8 @@ public class ProductService {
                 dto);
     }
 
+    @CachePut(value = "product", key = "#id")
+    @CacheEvict(value = "product_pages", allEntries = true)
     public ApiResponse<String> updateStatusProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -206,6 +221,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CachePut(value = "product", key = "#productId")
     public ApiResponse<String> adjustStock(Long productId, int quantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
@@ -230,6 +246,10 @@ public class ProductService {
                 "Product stock now: " + newStock + ", status: " + product.getStatus());
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "product", key = "#id"),
+        @CacheEvict(value = "product_pages", allEntries = true)
+    })
     public ApiResponse<String> deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
