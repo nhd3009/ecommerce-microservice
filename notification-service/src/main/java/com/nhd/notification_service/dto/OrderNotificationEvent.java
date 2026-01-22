@@ -1,5 +1,6 @@
 package com.nhd.notification_service.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -19,5 +20,6 @@ public class OrderNotificationEvent {
     private String message;
     private String status;
     private List<OrderItemEvent> items;
+    private BigDecimal totalAmount;
     private Instant timestamp;
 }

@@ -20,7 +20,6 @@ import com.nhd.order_service.client.AuthFeignClient;
 import com.nhd.order_service.client.ProductFeignClient;
 import com.nhd.order_service.config.OrderEventPublisher;
 import com.nhd.order_service.dto.OrderDto;
-import com.nhd.order_service.dto.OrderItemDto;
 import com.nhd.order_service.dto.OrderItemEvent;
 import com.nhd.order_service.dto.OrderNotificationEvent;
 import com.nhd.order_service.dto.ProductDto;
@@ -112,6 +111,7 @@ public class OrderService {
                                         .status(savedOrder.getStatus().name())
                                         .timestamp(Instant.now())
                                         .items(orderItemEvents)
+                                        .totalAmount(savedOrder.getTotalAmount())
                                         .build();
         orderEventPublisher.publishOrderNotification(orderEvent);
         return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
