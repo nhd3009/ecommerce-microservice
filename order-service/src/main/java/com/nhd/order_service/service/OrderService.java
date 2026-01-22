@@ -1,6 +1,7 @@
 package com.nhd.order_service.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.nhd.order_service.client.AuthFeignClient;
 import com.nhd.order_service.client.ProductFeignClient;
+import com.nhd.order_service.config.OrderEventPublisher;
 import com.nhd.order_service.dto.OrderDto;
 import com.nhd.order_service.dto.OrderItemDto;
+import com.nhd.order_service.dto.OrderItemEvent;
+import com.nhd.order_service.dto.OrderNotificationEvent;
 import com.nhd.order_service.dto.ProductDto;
 import com.nhd.order_service.dto.UserDto;
 import com.nhd.order_service.entity.Order;
@@ -41,14 +45,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final AuthFeignClient authClient;
     private final ProductFeignClient productClient;
+    private final OrderEventPublisher orderEventPublisher;
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
     private static final String ROLE_USER = "ROLE_USER";
 
-    public OrderService(OrderRepository orderRepository, AuthFeignClient authClient, ProductFeignClient productClient) {
+    public OrderService(OrderRepository orderRepository, AuthFeignClient authClient, ProductFeignClient productClient, OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
         this.authClient = authClient;
         this.productClient = productClient;
+        this.orderEventPublisher = orderEventPublisher;
     }
     
     @Transactional
@@ -89,7 +95,25 @@ public class OrderService {
         order.setItems(orderItems); 
         Order savedOrder = orderRepository.save(order); 
 
-        
+        List<OrderItemEvent> orderItemEvents = savedOrder.getItems().stream()
+                                        .map(i -> OrderItemEvent.builder()
+                                                    .productId(i.getProductId())
+                                                    .price(i.getPrice())
+                                                    .productName(i.getProductName())
+                                                    .quantity(i.getQuantity())
+                                                    .subTotal(i.getSubTotal())
+                                                    .build())
+                                                    .toList();
+        OrderNotificationEvent orderEvent = OrderNotificationEvent.builder()
+                                        .orderId(savedOrder.getId())
+                                        .userId(savedOrder.getUserId())
+                                        .email(user.getEmail())
+                                        .message("Your order #" + savedOrder.getId() + " has been placed successfully!")
+                                        .status(savedOrder.getStatus().name())
+                                        .timestamp(Instant.now())
+                                        .items(orderItemEvents)
+                                        .build();
+        orderEventPublisher.publishOrderNotification(orderEvent);
         return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
     }
 
