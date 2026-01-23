@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      h2 { color: #4CAF50; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>
+  </head>
+  <body>
+    <h2>${message}</h2>
+    <p>Hello ${email! "Customer"},</p>
+    <p>Thank you for your purchase! Here are your order details:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        <#list items as item>
+        <tr>
+          <td>${item.productName}</td>
+          <td>${item.quantity}</td>
+          <td>$${item.price}</td>
+        </tr>
+        </#list>
+        
+        <tr>
+            <td colspan="2" style="text-align: right; font-weight: bold;">
+                Total Amount
+            </td>
+            <td>$${totalAmount! "0.00"}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p><strong>Status:</strong> ${status! "Processing"}</p>
+    <p>
+      <#if status == "DELIVERING">
+          <strong>Good news!</strong> Your order is on its way. Please keep an eye out for your delivery. Thank you for choosing us!
+      <#else>
+          We are currently preparing your items and will notify you as soon as your order is delivering.
+      </#if>
+    </p>
+
+    <p>Thanks,<br/>Frieren Team</p>
+  </body>
+</html>

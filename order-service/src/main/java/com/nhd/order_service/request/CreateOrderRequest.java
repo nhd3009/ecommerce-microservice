@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class CreateOrderRequest {
     private List<OrderItemRequest> items;
     private String note;
+    private String orderEmail;
     private String recipientPhone;
     private String shippingAddress;
     private String recipientName;

@@ -232,7 +232,6 @@ public class ProductService {
     }
 
     @Transactional
-    @CachePut(value = "product", key = "#productId")
     public ApiResponse<String> adjustStock(Long productId, int quantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));

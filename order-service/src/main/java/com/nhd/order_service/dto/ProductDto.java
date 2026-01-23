@@ -6,11 +6,15 @@ import java.util.List;
 
 import com.nhd.order_service.enums.ProductStatus;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProductDto {
     private Long id;
     private String name;
