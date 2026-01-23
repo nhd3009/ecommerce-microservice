@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 public class OrderDto {
     private Long id;
     private Long userId;
+    private String orderEmail;
     private BigDecimal totalAmount;
     private OrderStatus status;
     private String note;

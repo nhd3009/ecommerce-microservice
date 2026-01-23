@@ -35,6 +35,7 @@ public class Order {
     private Long id;
 
     private Long userId;
+    private String orderEmail;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;

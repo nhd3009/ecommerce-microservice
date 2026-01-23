@@ -39,7 +39,10 @@ import com.nhd.order_service.response.ApiResponse;
 import com.nhd.order_service.response.PageResponse;
 import com.nhd.order_service.specification.OrderSpecification;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class OrderService {
     private final OrderRepository orderRepository;
     private final AuthFeignClient authClient;
@@ -58,63 +61,51 @@ public class OrderService {
     
     @Transactional
     public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) { 
-
-        UserDto user = getUserFromToken(bearerToken); 
+        try{
+            UserDto user = getUserFromToken(bearerToken); 
         
-        List<OrderItem> orderItems = new ArrayList<>(); 
-        BigDecimal totalPrice = BigDecimal.ZERO; 
-        for (OrderItemRequest itemReq : request.getItems()) { 
-            ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId()); 
-            ProductDto product = productResponse.getBody().getData(); 
-            if (product == null) { 
-                throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId()); 
+            List<OrderItem> orderItems = new ArrayList<>(); 
+            BigDecimal totalPrice = BigDecimal.ZERO; 
+            for (OrderItemRequest itemReq : request.getItems()) { 
+                ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId()); 
+                ProductDto product = productResponse.getBody().getData(); 
+                if (product == null) { 
+                    throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId()); 
+                } 
+                if (product.getStockQuantity() < itemReq.getQuantity()) { 
+                    throw new BadRequestException("Not enough stock for product: " + product.getName()); 
+                } 
+
+                productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
+                BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())); 
+                totalPrice = totalPrice.add(subTotal); 
+
+                OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build(); 
+                orderItems.add(orderItem); 
             } 
-            if (product.getStockQuantity() < itemReq.getQuantity()) { 
-                throw new BadRequestException("Not enough stock for product: " + product.getName()); 
-            } 
 
-            productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
-            BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())); 
-            totalPrice = totalPrice.add(subTotal); 
+            Order order = Order.builder()
+                                .userId(user.getId())
+                                .orderEmail(request.getOrderEmail().isEmpty() || request.getOrderEmail() == null ? user.getEmail() : request.getOrderEmail())
+                                .totalAmount(totalPrice)
+                                .status(OrderStatus.PENDING)
+                                .note(request.getNote())
+                                .recipientPhone(request.getRecipientPhone())
+                                .shippingAddress(request.getShippingAddress())
+                                .recipientName(request.getRecipientName())
+                                .build(); 
+            orderItems.forEach(item -> item.setOrder(order)); 
+            order.setItems(orderItems); 
+            Order savedOrder = orderRepository.save(order); 
 
-            OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build(); 
-            orderItems.add(orderItem); 
-        } 
-
-        Order order = Order.builder()
-                            .userId(user.getId())
-                            .totalAmount(totalPrice)
-                            .status(OrderStatus.PENDING)
-                            .note(request.getNote())
-                            .recipientPhone(request.getRecipientPhone())
-                            .shippingAddress(request.getShippingAddress())
-                            .recipientName(request.getRecipientName())
-                            .build(); 
-        orderItems.forEach(item -> item.setOrder(order)); 
-        order.setItems(orderItems); 
-        Order savedOrder = orderRepository.save(order); 
-
-        List<OrderItemEvent> orderItemEvents = savedOrder.getItems().stream()
-                                        .map(i -> OrderItemEvent.builder()
-                                                    .productId(i.getProductId())
-                                                    .price(i.getPrice())
-                                                    .productName(i.getProductName())
-                                                    .quantity(i.getQuantity())
-                                                    .subTotal(i.getSubTotal())
-                                                    .build())
-                                                    .toList();
-        OrderNotificationEvent orderEvent = OrderNotificationEvent.builder()
-                                        .orderId(savedOrder.getId())
-                                        .userId(savedOrder.getUserId())
-                                        .email(user.getEmail())
-                                        .message("Your order #" + savedOrder.getId() + " has been placed successfully!")
-                                        .status(savedOrder.getStatus().name())
-                                        .timestamp(Instant.now())
-                                        .items(orderItemEvents)
-                                        .totalAmount(savedOrder.getTotalAmount())
-                                        .build();
-        orderEventPublisher.publishOrderNotification(orderEvent);
-        return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
+            OrderNotificationEvent orderEvent = returnNotificationEvent(savedOrder);
+            orderEventPublisher.publishOrderNotification(orderEvent);
+            return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
+        } catch (Exception e) {
+            log.error("[ORDER ERROR] {}", e.getMessage(), e);
+            throw e;
+        }
+        
     }
 
     public ApiResponse<OrderDto> getOrderById(Long orderId, String bearerToken) {
@@ -151,12 +142,12 @@ public class OrderService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
 
-        Specification<Order> spec = Specification
-                .where(OrderSpecification.hasStatus(status))
-                .and(OrderSpecification.hasUserId(userId))
-                .and(OrderSpecification.createdAfter(fromDate))
-                .and(OrderSpecification.createdBefore(toDate));
-
+        Specification<Order> spec = Specification.allOf(
+                OrderSpecification.hasStatus(status),
+                OrderSpecification.hasUserId(userId),
+                OrderSpecification.createdAfter(fromDate),
+                OrderSpecification.createdBefore(toDate)
+        );
         Page<OrderDto> dtoPage = orderRepository.findAll(spec, pageable).map(OrderMapper::toOrderDto);
         return new ApiResponse<>(PageResponseMapper.fromPage(dtoPage), HttpStatus.OK.value(), "Orders retrieved successfully");
     }
@@ -198,7 +189,7 @@ public class OrderService {
         }
 
         // Shipped order rule
-        if (newStatus == OrderStatus.SHIPPED) {
+        if (newStatus == OrderStatus.DELIVERING) {
             if (deliveryProvider == null || deliveryProvider.isEmpty() || trackingNumber == null || trackingNumber.isEmpty()) {
                 throw new BadRequestException("Must provide deliveryProvider and trackingNumber when marking as SHIPPED");
             }
@@ -217,7 +208,7 @@ public class OrderService {
 
         // Return stock when order is cancelled
         if (newStatus == OrderStatus.CANCELLED && (isUser || isAdmin)) {
-            if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.COMPLETED){
+            if (order.getStatus() == OrderStatus.DELIVERING || order.getStatus() == OrderStatus.COMPLETED){
                 throw new BadRequestException("Cannot cancel a shipped or completed order");
             }
             if (order.getStatus() != OrderStatus.CANCELLED) {
@@ -229,6 +220,18 @@ public class OrderService {
         order.setStatus(newStatus);
         orderRepository.save(order);
 
+        if (List.of(OrderStatus.DELIVERING, OrderStatus.CANCELLED).contains(newStatus)) {
+
+            OrderNotificationEvent event = returnNotificationEvent(order);
+            if(newStatus.equals(OrderStatus.DELIVERING)){
+                event.setMessage("Your order #" + order.getId() + " has been shipped via "
+                                                + deliveryProvider + ", tracking number " + trackingNumber + ".");
+            }
+            if(newStatus.equals(OrderStatus.CANCELLED)){
+                event.setMessage("Your order #" + order.getId() + " has been cancelled.");
+            }
+            orderEventPublisher.publishOrderNotification(event);
+        }
         return new ApiResponse<>(OrderMapper.toOrderDto(order), HttpStatus.OK.value(), "Order status updated successfully");
     }
 
@@ -252,5 +255,28 @@ public class OrderService {
             throw new UnauthorizedException("Missing token");
         }
         return token;
+    }
+
+    public OrderNotificationEvent returnNotificationEvent(Order savedOrder){
+        List<OrderItemEvent> orderItemEvents = savedOrder.getItems().stream()
+                                            .map(i -> OrderItemEvent.builder()
+                                                .productId(i.getProductId())
+                                                .price(i.getPrice())
+                                                .productName(i.getProductName())
+                                                .quantity(i.getQuantity())
+                                                .subTotal(i.getSubTotal())
+                                                .build())
+                                                .toList();
+        OrderNotificationEvent orderEvent = OrderNotificationEvent.builder()
+                                            .orderId(savedOrder.getId())
+                                            .userId(savedOrder.getUserId())
+                                            .email(savedOrder.getOrderEmail())
+                                            .message("Your order #" + savedOrder.getId() + " has been placed successfully!")
+                                            .status(savedOrder.getStatus().name())
+                                            .timestamp(Instant.now())
+                                            .items(orderItemEvents)
+                                            .totalAmount(savedOrder.getTotalAmount())
+                                            .build();
+        return orderEvent;
     }
 }

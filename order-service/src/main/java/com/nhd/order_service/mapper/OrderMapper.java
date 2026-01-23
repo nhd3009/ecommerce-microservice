@@ -26,6 +26,7 @@ public class OrderMapper {
         return OrderDto.builder()
                 .id(order.getId())
                 .userId(order.getUserId())
+                .orderEmail(order.getOrderEmail())
                 .totalAmount(order.getTotalAmount())
                 .note(order.getNote())
                 .recipientPhone(order.getRecipientPhone())
