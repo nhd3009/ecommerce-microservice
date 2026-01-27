@@ -1,9 +1,8 @@
 package com.nhd.order_service.config;
 
+import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-
-import com.nhd.order_service.dto.OrderNotificationEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

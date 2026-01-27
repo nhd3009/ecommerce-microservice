@@ -1,8 +1,7 @@
 package com.nhd.order_service.mapper;
 
+import com.nhd.commonlib.response.PageResponse;
 import org.springframework.data.domain.Page;
-
-import com.nhd.order_service.response.PageResponse;
 
 public class PageResponseMapper {
     public static <T> PageResponse<T> fromPage(Page<T> page) {

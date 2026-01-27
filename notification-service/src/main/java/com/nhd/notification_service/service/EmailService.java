@@ -3,12 +3,12 @@ package com.nhd.notification_service.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
 
-import com.nhd.notification_service.dto.OrderNotificationEvent;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;

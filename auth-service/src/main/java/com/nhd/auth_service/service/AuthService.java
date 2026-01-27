@@ -10,8 +10,8 @@ import com.nhd.auth_service.exception.AuthException;
 import com.nhd.auth_service.mapper.UserMapper;
 import com.nhd.auth_service.repository.RoleRepository;
 import com.nhd.auth_service.repository.UserRepository;
-import com.nhd.auth_service.response.ApiResponse;
 
+import com.nhd.commonlib.response.ApiResponse;
 import io.jsonwebtoken.Claims;
 
 import java.time.Instant;
@@ -54,7 +54,7 @@ public class AuthService {
 
       userRepository.save(user);
       UserDto userDto = UserMapper.toDto(user);
-      return new ApiResponse<>(userDto, HttpStatus.CREATED.value(), "User has been created successfully!");
+      return new ApiResponse<>(HttpStatus.CREATED.value(),  "User has been created successfully!", userDto);
     } catch (Exception e) {
       throw new RuntimeException("Error registering user: " + e.getMessage());
     }
@@ -70,7 +70,7 @@ public class AuthService {
       }
       AuthResponse response = createdRefreshToken(user);
 
-      return new ApiResponse<>(response, HttpStatus.OK.value(), "Login successful!");
+      return new ApiResponse<>(HttpStatus.OK.value() , "Login successful!", response);
 
     } catch (AuthException e) {
       throw e;
@@ -90,7 +90,7 @@ public class AuthService {
 
       AuthResponse response = createdRefreshToken(user);
 
-      return new ApiResponse<>(response, HttpStatus.OK.value(), "Refresh Token successful!");
+      return new ApiResponse<>(HttpStatus.OK.value(),  "Refresh Token successful!", response);
     } catch (AuthException e) {
       throw e;
     } catch (Exception e) {
@@ -101,10 +101,7 @@ public class AuthService {
 
   public ApiResponse<UserDto> verifyToken(String token) {
     if (token == null || token.isEmpty()) {
-      return new ApiResponse<>(
-          null,
-          HttpStatus.UNAUTHORIZED.value(),
-          "Missing or invalid access token");
+      return new ApiResponse<>(HttpStatus.UNAUTHORIZED.value(), "Missing or invalid access token", null);
     }
 
     try {
@@ -116,16 +113,10 @@ public class AuthService {
       userInfo.setEmail(claims.get("email", String.class));
       userInfo.setRoles(claims.get("roles", List.class));
 
-      return new ApiResponse<>(
-          userInfo,
-          HttpStatus.OK.value(),
-          "Token verified");
+      return new ApiResponse<>(HttpStatus.OK.value(), "Token verified", userInfo);
 
     } catch (Exception e) {
-      return new ApiResponse<>(
-          null,
-          HttpStatus.UNAUTHORIZED.value(),
-          "Invalid or expired token");
+      return new ApiResponse<>(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired token", null);
     }
   }
 
@@ -138,7 +129,7 @@ public class AuthService {
       user.setRefreshTokenExpired(null);
       userRepository.save(user);
 
-      return new ApiResponse<>("Logout successful!", HttpStatus.OK.value(), "Logout successful!");
+      return new ApiResponse<>(HttpStatus.OK.value(),"Logout successful!",  "Logout successful!");
     } catch (AuthException e) {
       throw e;
     } catch (Exception e) {

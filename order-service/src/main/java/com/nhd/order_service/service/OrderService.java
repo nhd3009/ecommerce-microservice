@@ -6,6 +6,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.UserDto;
+import com.nhd.commonlib.event.order_notification.OrderItemEvent;
+import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
+import com.nhd.commonlib.exception.BadRequestException;
+import com.nhd.commonlib.exception.ResourceNotFoundException;
+import com.nhd.commonlib.exception.UnauthorizedException;
+import com.nhd.commonlib.response.ApiResponse;
+import com.nhd.commonlib.response.PageResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,23 +29,14 @@ import com.nhd.order_service.client.AuthFeignClient;
 import com.nhd.order_service.client.ProductFeignClient;
 import com.nhd.order_service.config.OrderEventPublisher;
 import com.nhd.order_service.dto.OrderDto;
-import com.nhd.order_service.dto.OrderItemEvent;
-import com.nhd.order_service.dto.OrderNotificationEvent;
-import com.nhd.order_service.dto.ProductDto;
-import com.nhd.order_service.dto.UserDto;
 import com.nhd.order_service.entity.Order;
 import com.nhd.order_service.entity.OrderItem;
 import com.nhd.order_service.enums.OrderStatus;
-import com.nhd.order_service.exception.BadRequestException;
-import com.nhd.order_service.exception.ResourceNotFoundException;
-import com.nhd.order_service.exception.UnauthorizedException;
 import com.nhd.order_service.mapper.OrderMapper;
 import com.nhd.order_service.mapper.PageResponseMapper;
 import com.nhd.order_service.repository.OrderRepository;
 import com.nhd.order_service.request.CreateOrderRequest;
 import com.nhd.order_service.request.OrderItemRequest;
-import com.nhd.order_service.response.ApiResponse;
-import com.nhd.order_service.response.PageResponse;
 import com.nhd.order_service.specification.OrderSpecification;
 
 import lombok.extern.slf4j.Slf4j;
@@ -60,20 +60,20 @@ public class OrderService {
     }
     
     @Transactional
-    public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) { 
+    public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) {
         try{
-            UserDto user = getUserFromToken(bearerToken); 
+            UserDto user = getUserFromToken(bearerToken);
         
             List<OrderItem> orderItems = new ArrayList<>(); 
             BigDecimal totalPrice = BigDecimal.ZERO; 
             for (OrderItemRequest itemReq : request.getItems()) { 
-                ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId()); 
-                ProductDto product = productResponse.getBody().getData(); 
+                ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId());
+                ProductDto product = productResponse.getBody() != null ? productResponse.getBody().getData() : null;
                 if (product == null) { 
-                    throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId()); 
+                    throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId());
                 } 
                 if (product.getStockQuantity() < itemReq.getQuantity()) { 
-                    throw new BadRequestException("Not enough stock for product: " + product.getName()); 
+                    throw new BadRequestException("Not enough stock for product: " + product.getName());
                 } 
 
                 productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
@@ -86,7 +86,7 @@ public class OrderService {
 
             Order order = Order.builder()
                                 .userId(user.getId())
-                                .orderEmail(request.getOrderEmail().isEmpty() || request.getOrderEmail() == null ? user.getEmail() : request.getOrderEmail())
+                                .orderEmail(request.getOrderEmail().isEmpty() ? user.getEmail() : request.getOrderEmail())
                                 .totalAmount(totalPrice)
                                 .status(OrderStatus.PENDING)
                                 .note(request.getNote())
@@ -100,7 +100,7 @@ public class OrderService {
 
             OrderNotificationEvent orderEvent = returnNotificationEvent(savedOrder);
             orderEventPublisher.publishOrderNotification(orderEvent);
-            return new ApiResponse<>(OrderMapper.toOrderDto(savedOrder), HttpStatus.CREATED.value(), "Order placed successfully");
+            return new ApiResponse<>(HttpStatus.CREATED.value(), "Order placed successfully", OrderMapper.toOrderDto(savedOrder));
         } catch (Exception e) {
             log.error("[ORDER ERROR] {}", e.getMessage(), e);
             throw e;
@@ -120,7 +120,7 @@ public class OrderService {
             throw new UnauthorizedException("You are not authorized to view this order");
         }
 
-        return new ApiResponse<>(OrderMapper.toOrderDto(order), HttpStatus.OK.value(), "Order retrieved successfully");
+        return new ApiResponse<>(HttpStatus.OK.value(), "Order retrieved successfully", OrderMapper.toOrderDto(order));
     }
 
     public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(String bearerToken, int page, int size) {
@@ -131,7 +131,7 @@ public class OrderService {
         Page<Order> ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
         Page<OrderDto> dtoPage = ordersPage.map(OrderMapper::toOrderDto);
 
-        return new ApiResponse<>(PageResponseMapper.fromPage(dtoPage), HttpStatus.OK.value(), "Orders retrieved successfully");
+        return new ApiResponse<>(HttpStatus.OK.value(), "Orders retrieved successfully", PageResponseMapper.fromPage(dtoPage));
     }
 
     public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(String bearerToken, OrderStatus status, Long userId, LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
@@ -149,7 +149,7 @@ public class OrderService {
                 OrderSpecification.createdBefore(toDate)
         );
         Page<OrderDto> dtoPage = orderRepository.findAll(spec, pageable).map(OrderMapper::toOrderDto);
-        return new ApiResponse<>(PageResponseMapper.fromPage(dtoPage), HttpStatus.OK.value(), "Orders retrieved successfully");
+        return new ApiResponse<>(HttpStatus.OK.value(), "Orders retrieved successfully", PageResponseMapper.fromPage(dtoPage));
     }
 
     public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus newStatus, String deliveryProvider, String trackingNumber, String bearerToken){
@@ -206,15 +206,13 @@ public class OrderService {
             throw new BadRequestException("Invalid order status transition");
         }
 
-        // Return stock when order is cancelled
+        // Return stock when order is canceled
         if (newStatus == OrderStatus.CANCELLED && (isUser || isAdmin)) {
             if (order.getStatus() == OrderStatus.DELIVERING || order.getStatus() == OrderStatus.COMPLETED){
                 throw new BadRequestException("Cannot cancel a shipped or completed order");
             }
-            if (order.getStatus() != OrderStatus.CANCELLED) {
-                for (OrderItem item : order.getItems()) {
-                    productClient.adjustProductStock(item.getProductId(), -item.getQuantity());
-                }
+            for (OrderItem item : order.getItems()) {
+                productClient.adjustProductStock(item.getProductId(), -item.getQuantity());
             }
         }
         order.setStatus(newStatus);
@@ -232,7 +230,7 @@ public class OrderService {
             }
             orderEventPublisher.publishOrderNotification(event);
         }
-        return new ApiResponse<>(OrderMapper.toOrderDto(order), HttpStatus.OK.value(), "Order status updated successfully");
+        return new ApiResponse<>(HttpStatus.OK.value(), "Order status updated successfully", OrderMapper.toOrderDto(order));
     }
 
     public UserDto getUserFromToken(String bearerToken) {
@@ -267,7 +265,7 @@ public class OrderService {
                                                 .subTotal(i.getSubTotal())
                                                 .build())
                                                 .toList();
-        OrderNotificationEvent orderEvent = OrderNotificationEvent.builder()
+        return OrderNotificationEvent.builder()
                                             .orderId(savedOrder.getId())
                                             .userId(savedOrder.getUserId())
                                             .email(savedOrder.getOrderEmail())
@@ -277,6 +275,5 @@ public class OrderService {
                                             .items(orderItemEvents)
                                             .totalAmount(savedOrder.getTotalAmount())
                                             .build();
-        return orderEvent;
     }
 }

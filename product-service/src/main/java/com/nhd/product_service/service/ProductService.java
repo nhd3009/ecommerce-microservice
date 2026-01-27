@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.nhd.commonlib.exception.BadRequestException;
+import com.nhd.commonlib.exception.ResourceNotFoundException;
+import com.nhd.commonlib.response.ApiResponse;
+import com.nhd.commonlib.response.PageResponse;
+import org.jspecify.annotations.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,15 +26,11 @@ import com.nhd.product_service.entity.Category;
 import com.nhd.product_service.entity.Product;
 import com.nhd.product_service.entity.ProductImage;
 import com.nhd.product_service.enums.ProductStatus;
-import com.nhd.product_service.exception.BadRequestException;
-import com.nhd.product_service.exception.ResourceNotFoundException;
 import com.nhd.product_service.mapper.ProductMapper;
 import com.nhd.product_service.repository.CategoryRepository;
 import com.nhd.product_service.repository.ProductRepository;
 import com.nhd.product_service.request.ProductRequest;
 import com.nhd.product_service.request.ProductFilterRequest;
-import com.nhd.product_service.response.ApiResponse;
-import com.nhd.product_service.response.PageResponse;
 import com.nhd.product_service.specification.ProductSpecification;
 
 import jakarta.transaction.Transactional;
@@ -60,6 +61,11 @@ public class ProductService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Product> products = productRepository.findAll(pageable);
+        return getPageResponse(products);
+    }
+
+    @NonNull
+    public ApiResponse<PageResponse<ProductDto>> getPageResponse(Page<Product> products) {
         List<ProductDto> productDtos = products.getContent().stream()
                 .map(ProductMapper::toDto)
                 .collect(Collectors.toList());
@@ -78,17 +84,7 @@ public class ProductService {
     public ApiResponse<PageResponse<ProductDto>> getProductsByCategory(Long categoryId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Product> products = productRepository.findAllByCategoryId(categoryId, pageable);
-        List<ProductDto> productDtos = products.getContent().stream()
-                .map(ProductMapper::toDto)
-                .collect(Collectors.toList());
-        PageResponse<ProductDto> response = PageResponse.<ProductDto>builder()
-                .data(productDtos)
-                .totalElements(products.getTotalElements())
-                .totalPages(products.getTotalPages())
-                .currentPage(products.getNumber())
-                .pageSize(products.getSize())
-                .build();
-        return new ApiResponse<>(HttpStatus.OK.value(), "Products retrieved successfully", response);
+        return getPageResponse(products);
     }
 
     public ApiResponse<PageResponse<ProductDto>> getAllProductByFilter(ProductFilterRequest filterRequest, int page,
@@ -97,18 +93,7 @@ public class ProductService {
         Specification<Product> spec = ProductSpecification.filter(filterRequest);
 
         Page<Product> products = productRepository.findAll(spec, pageable);
-        List<ProductDto> productDtos = products.getContent().stream()
-                .map(ProductMapper::toDto)
-                .collect(Collectors.toList());
-
-        PageResponse<ProductDto> response = PageResponse.<ProductDto>builder()
-                .data(productDtos)
-                .totalElements(products.getTotalElements())
-                .totalPages(products.getTotalPages())
-                .currentPage(products.getNumber())
-                .pageSize(products.getSize())
-                .build();
-        return new ApiResponse<>(HttpStatus.OK.value(), "Products retrieved successfully", response);
+        return getPageResponse(products);
     }
 
     @Caching(evict = {
@@ -157,7 +142,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
         List<String> oldImageUrls = product.getImages() != null
-                ? product.getImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toList())
+                ? product.getImages().stream().map(ProductImage::getImageUrl).toList()
                 : new ArrayList<>();
 
         if (request.getName() != null)
@@ -186,11 +171,11 @@ public class ProductService {
                             .imageUrl(url)
                             .product(product)
                             .build())
-                    .collect(Collectors.toList());
+                    .toList();
 
             List<String> removedImages = oldImageUrls.stream()
                     .filter(old -> !request.getImageUrls().contains(old))
-                    .collect(Collectors.toList());
+                    .toList();
 
             removedImages.forEach(fileStorageService::deleteFile);
 
@@ -225,7 +210,7 @@ public class ProductService {
                 : ProductStatus.ACTIVE;
         product.setStatus(newStatus);
         productRepository.save(product);
-        return new ApiResponse<String>(
+        return new ApiResponse<>(
                 HttpStatus.OK.value(),
                 "Product status updated successfully",
                 "Product status is now " + newStatus.name());

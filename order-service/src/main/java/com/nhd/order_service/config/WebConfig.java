@@ -12,7 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addFormatters(FormatterRegistry registry) {
         registry.addConverter(String.class, LocalDateTime.class, source -> {
-            if (source == null || source.isBlank()) return null;
+            if (source.isBlank()) return null;
             if (source.length() == 10) {
                 return LocalDate.parse(source).atStartOfDay();
             }

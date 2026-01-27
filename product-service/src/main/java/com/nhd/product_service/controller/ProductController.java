@@ -1,5 +1,6 @@
 package com.nhd.product_service.controller;
 
+import com.nhd.commonlib.response.ApiResponse;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -7,7 +8,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nhd.product_service.request.ProductRequest;
-import com.nhd.product_service.response.ApiResponse;
 import com.nhd.product_service.dto.ProductDto;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.service.FileStorageService;

@@ -1,9 +1,9 @@
 package com.nhd.notification_service.listener;
 
+import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import com.nhd.notification_service.dto.OrderNotificationEvent;
 import com.nhd.notification_service.service.EmailService;
 
 import lombok.RequiredArgsConstructor;

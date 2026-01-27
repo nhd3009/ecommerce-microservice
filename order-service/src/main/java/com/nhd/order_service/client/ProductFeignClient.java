@@ -1,14 +1,13 @@
 package com.nhd.order_service.client;
 
+import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.response.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import com.nhd.order_service.dto.ProductDto;
-import com.nhd.order_service.response.ApiResponse;
 
 @FeignClient(name = "PRODUCT-SERVICE")
 public interface ProductFeignClient {

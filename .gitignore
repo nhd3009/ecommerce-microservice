@@ -26,13 +26,14 @@ build/
 # =====================
 # Env / Secrets
 # =====================
-.env
+local.env
 *.env
 application-local.yml
 application-local.properties
 
 # Ignore uploads folder in product-service
 product-service/uploads/
+uploads/
 
 # Compiled class file
 *.class
