@@ -3,13 +3,17 @@ package com.nhd.product_service.exception;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.nhd.commonlib.exception.BadRequestException;
+import com.nhd.commonlib.exception.DuplicateException;
+import com.nhd.commonlib.exception.ResourceNotFoundException;
+import com.nhd.commonlib.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.nhd.product_service.response.ApiResponse;
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

@@ -1,7 +1,7 @@
 package com.nhd.auth_service.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhd.auth_service.response.ApiResponse;
+import com.nhd.commonlib.response.ApiResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +26,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
   @Override
   public void commence(HttpServletRequest request, HttpServletResponse response,
       AuthenticationException authException) throws IOException {
-    ApiResponse<String> apiResponse = new ApiResponse<>("Unauthorized access", HttpStatus.UNAUTHORIZED.value(), "Unauthorized");
+    ApiResponse<String> apiResponse = new ApiResponse<>(HttpStatus.UNAUTHORIZED.value(), "Unauthorized","Unauthorized access");
     apiResponse.setTimestamp(LocalDateTime.now());
 
     response.setStatus(HttpStatus.UNAUTHORIZED.value());

@@ -1,7 +1,7 @@
 package com.nhd.auth_service.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nhd.auth_service.response.ApiResponse;
+import com.nhd.commonlib.response.ApiResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +26,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
   @Override
   public void handle(HttpServletRequest request, HttpServletResponse response,
       org.springframework.security.access.AccessDeniedException accessDeniedException) throws IOException {
-    ApiResponse<String> apiResponse = new ApiResponse<>("Access denied", HttpStatus.FORBIDDEN.value(), "Forbidden");
+    ApiResponse<String> apiResponse = new ApiResponse<>(HttpStatus.FORBIDDEN.value(), "Forbidden", "Access denied");
     apiResponse.setTimestamp(LocalDateTime.now());
 
     response.setStatus(HttpStatus.FORBIDDEN.value());

@@ -4,10 +4,10 @@ import com.nhd.auth_service.dto.AuthResponse;
 import com.nhd.auth_service.dto.LoginRequest;
 import com.nhd.auth_service.dto.RegisterRequest;
 import com.nhd.auth_service.dto.UserDto;
-import com.nhd.auth_service.response.ApiResponse;
 import com.nhd.auth_service.service.AuthService;
 import com.nhd.auth_service.service.JwtService;
 
+import com.nhd.commonlib.response.ApiResponse;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 

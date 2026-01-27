@@ -1,11 +1,11 @@
 package com.nhd.product_service.controller;
 
+import com.nhd.commonlib.response.ApiResponse;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nhd.product_service.request.CreateCategoryRequest;
 import com.nhd.product_service.request.UpdateCategoryRequest;
-import com.nhd.product_service.response.ApiResponse;
 import com.nhd.product_service.service.CategoryService;
 
 import jakarta.validation.Valid;

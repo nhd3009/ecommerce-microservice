@@ -3,6 +3,7 @@ package com.nhd.notification_service.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +19,6 @@ import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
-import com.nhd.notification_service.dto.OrderNotificationEvent;
 
 @Configuration
 @EnableKafka
@@ -36,7 +36,7 @@ public class KafkaConsumerConfig {
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.nhd.notification_service.dto.OrderNotificationEvent");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.nhd.commonlib.event.order_notification.OrderNotificationEvent");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
         return new DefaultKafkaConsumerFactory<>(props);
