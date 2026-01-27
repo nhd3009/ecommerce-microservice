@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.nhd.product_service.dto.ProductDto;
+import com.nhd.commonlib.dto.ProductDto;
 import com.nhd.product_service.entity.Product;
 import com.nhd.product_service.entity.ProductImage;
 

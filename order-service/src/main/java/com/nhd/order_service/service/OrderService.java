@@ -15,6 +15,7 @@ import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.exception.UnauthorizedException;
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
     private final AuthFeignClient authClient;
@@ -51,64 +53,51 @@ public class OrderService {
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
     private static final String ROLE_USER = "ROLE_USER";
-
-    public OrderService(OrderRepository orderRepository, AuthFeignClient authClient, ProductFeignClient productClient, OrderEventPublisher orderEventPublisher) {
-        this.orderRepository = orderRepository;
-        this.authClient = authClient;
-        this.productClient = productClient;
-        this.orderEventPublisher = orderEventPublisher;
-    }
     
     @Transactional
-    public ApiResponse<OrderDto> placeOrder(CreateOrderRequest request, String bearerToken) {
-        try{
-            UserDto user = getUserFromToken(bearerToken);
-        
-            List<OrderItem> orderItems = new ArrayList<>(); 
-            BigDecimal totalPrice = BigDecimal.ZERO; 
-            for (OrderItemRequest itemReq : request.getItems()) { 
-                ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId());
-                ProductDto product = productResponse.getBody() != null ? productResponse.getBody().getData() : null;
-                if (product == null) { 
-                    throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId());
-                } 
-                if (product.getStockQuantity() < itemReq.getQuantity()) { 
-                    throw new BadRequestException("Not enough stock for product: " + product.getName());
-                } 
+    public OrderDto placeOrder(CreateOrderRequest request, String bearerToken) {
+        UserDto user = getUserFromToken(bearerToken);
 
-                productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
-                BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())); 
-                totalPrice = totalPrice.add(subTotal); 
+        List<OrderItem> orderItems = new ArrayList<>();
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        for (OrderItemRequest itemReq : request.getItems()) {
+            ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId());
+            ProductDto product = productResponse.getBody() != null ? productResponse.getBody().getData() : null;
+            if (product == null) {
+                throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId());
+            }
+            if (product.getStockQuantity() < itemReq.getQuantity()) {
+                throw new BadRequestException("Not enough stock for product: " + product.getName());
+            }
 
-                OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build(); 
-                orderItems.add(orderItem); 
-            } 
+            productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
+            BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            totalPrice = totalPrice.add(subTotal);
 
-            Order order = Order.builder()
-                                .userId(user.getId())
-                                .orderEmail(request.getOrderEmail().isEmpty() ? user.getEmail() : request.getOrderEmail())
-                                .totalAmount(totalPrice)
-                                .status(OrderStatus.PENDING)
-                                .note(request.getNote())
-                                .recipientPhone(request.getRecipientPhone())
-                                .shippingAddress(request.getShippingAddress())
-                                .recipientName(request.getRecipientName())
-                                .build(); 
-            orderItems.forEach(item -> item.setOrder(order)); 
-            order.setItems(orderItems); 
-            Order savedOrder = orderRepository.save(order); 
-
-            OrderNotificationEvent orderEvent = returnNotificationEvent(savedOrder);
-            orderEventPublisher.publishOrderNotification(orderEvent);
-            return new ApiResponse<>(HttpStatus.CREATED.value(), "Order placed successfully", OrderMapper.toOrderDto(savedOrder));
-        } catch (Exception e) {
-            log.error("[ORDER ERROR] {}", e.getMessage(), e);
-            throw e;
+            OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build();
+            orderItems.add(orderItem);
         }
-        
+
+        Order order = Order.builder()
+                            .userId(user.getId())
+                            .orderEmail(request.getOrderEmail().isEmpty() ? user.getEmail() : request.getOrderEmail())
+                            .totalAmount(totalPrice)
+                            .status(OrderStatus.PENDING)
+                            .note(request.getNote())
+                            .recipientPhone(request.getRecipientPhone())
+                            .shippingAddress(request.getShippingAddress())
+                            .recipientName(request.getRecipientName())
+                            .build();
+        orderItems.forEach(item -> item.setOrder(order));
+        order.setItems(orderItems);
+        Order savedOrder = orderRepository.save(order);
+
+        OrderNotificationEvent orderEvent = returnNotificationEvent(savedOrder);
+        orderEventPublisher.publishOrderNotification(orderEvent);
+        return OrderMapper.toOrderDto(savedOrder);
     }
 
-    public ApiResponse<OrderDto> getOrderById(Long orderId, String bearerToken) {
+    public OrderDto getOrderById(Long orderId, String bearerToken) {
         UserDto user = getUserFromToken(bearerToken);
 
         Order order = orderRepository.findById(orderId)
@@ -120,10 +109,10 @@ public class OrderService {
             throw new UnauthorizedException("You are not authorized to view this order");
         }
 
-        return new ApiResponse<>(HttpStatus.OK.value(), "Order retrieved successfully", OrderMapper.toOrderDto(order));
+        return OrderMapper.toOrderDto(order);
     }
 
-    public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(String bearerToken, int page, int size) {
+    public PageResponse<OrderDto> getAllMyOrder(String bearerToken, int page, int size) {
         UserDto user = getUserFromToken(bearerToken);
 
         Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
@@ -131,10 +120,10 @@ public class OrderService {
         Page<Order> ordersPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
         Page<OrderDto> dtoPage = ordersPage.map(OrderMapper::toOrderDto);
 
-        return new ApiResponse<>(HttpStatus.OK.value(), "Orders retrieved successfully", PageResponseMapper.fromPage(dtoPage));
+        return PageResponseMapper.fromPage(dtoPage);
     }
 
-    public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(String bearerToken, OrderStatus status, Long userId, LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
+    public PageResponse<OrderDto> getAllOrdersForAdmin(String bearerToken, OrderStatus status, Long userId, LocalDateTime fromDate, LocalDateTime toDate, int page, int size) {
         UserDto user = getUserFromToken(bearerToken);
         boolean isAdminOrEmployee = user.getRoles().contains(ROLE_ADMIN) || user.getRoles().contains(ROLE_EMPLOYEE);
         if (!isAdminOrEmployee)
@@ -149,10 +138,10 @@ public class OrderService {
                 OrderSpecification.createdBefore(toDate)
         );
         Page<OrderDto> dtoPage = orderRepository.findAll(spec, pageable).map(OrderMapper::toOrderDto);
-        return new ApiResponse<>(HttpStatus.OK.value(), "Orders retrieved successfully", PageResponseMapper.fromPage(dtoPage));
+        return PageResponseMapper.fromPage(dtoPage);
     }
 
-    public ApiResponse<OrderDto> updateOrderStatus(Long orderId, OrderStatus newStatus, String deliveryProvider, String trackingNumber, String bearerToken){
+    public OrderDto updateOrderStatus(Long orderId, OrderStatus newStatus, String deliveryProvider, String trackingNumber, String bearerToken){
         UserDto user = getUserFromToken(bearerToken);
 
         boolean isAdmin = user.getRoles().contains(ROLE_ADMIN);
@@ -230,7 +219,7 @@ public class OrderService {
             }
             orderEventPublisher.publishOrderNotification(event);
         }
-        return new ApiResponse<>(HttpStatus.OK.value(), "Order status updated successfully", OrderMapper.toOrderDto(order));
+        return OrderMapper.toOrderDto(order);
     }
 
     public UserDto getUserFromToken(String bearerToken) {

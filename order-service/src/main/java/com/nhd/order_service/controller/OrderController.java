@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,46 +26,65 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
 
-
-
 @RestController
 @RequestMapping("/api/v1/orders")
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class OrderController {
+
     private final OrderService orderService;
 
     @PostMapping("/place")
-    public ApiResponse<OrderDto> placeOrder(
+    public ResponseEntity<ApiResponse<OrderDto>> placeOrder(
         @RequestBody CreateOrderRequest request,
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken) {
+        try{
+            String token = orderService.getToken(bearerToken, accessToken);
+            OrderDto result = orderService.placeOrder(request, token);
 
-        String token = orderService.getToken(bearerToken, accessToken);
+            ApiResponse<OrderDto> response = new ApiResponse<>(
+                    HttpStatus.CREATED.value(),
+                    "Order has been placed successfully!",
+                    result
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e){
+            throw new RuntimeException("Errors when placing an order: " + e.getMessage());
+        }
 
-        return orderService.placeOrder(request, token);
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<OrderDto> getOrderId(@RequestHeader(value = "Authorization", required = false) String bearerToken,
+    public ResponseEntity<ApiResponse<OrderDto>> getOrderId(@RequestHeader(value = "Authorization", required = false) String bearerToken,
                                             @CookieValue(value = "accessToken", required = false) String accessToken,
-                                            @PathVariable("id") Long id) {
-        String token = orderService.getToken(bearerToken, accessToken);
-        return orderService.getOrderById(id, token);
+                                            @PathVariable Long id) {
+        try{
+            String token = orderService.getToken(bearerToken, accessToken);
+            ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "", orderService.getOrderById(id, token));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Errors when retrieving an order: " + e.getMessage());
+        }
     }
 
     @GetMapping("/my-orders")
-    public ApiResponse<PageResponse<OrderDto>> getAllMyOrder(
+    public ResponseEntity<ApiResponse<PageResponse<OrderDto>>> getAllMyOrder(
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ){
-        String token = orderService.getToken(bearerToken, accessToken);
-        return orderService.getAllMyOrder(token, page, size);
+        try{
+            String token = orderService.getToken(bearerToken, accessToken);
+            ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all my orders successfully!", orderService.getAllMyOrder(token, page, size));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Errors when retrieving all my orders: " + e.getMessage());
+        }
     }
 
     @GetMapping("/admin")
-    public ApiResponse<PageResponse<OrderDto>> getAllOrdersForAdmin(
+    public ResponseEntity<ApiResponse<PageResponse<OrderDto>>> getAllOrdersForAdmin(
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken,
         @RequestParam(required = false) OrderStatus status,
@@ -72,17 +94,27 @@ public class OrderController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
-        String token = orderService.getToken(bearerToken, accessToken);
-        return orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size);
+        try{
+            String token = orderService.getToken(bearerToken, accessToken);
+            ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all orders successfully!", orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Errors when retrieving all orders: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}/status")
-    public ApiResponse<OrderDto> updateOrderStatus(@PathVariable("id") Long orderId,
+    public ResponseEntity<ApiResponse<OrderDto>> updateOrderStatus(@PathVariable("id") Long orderId,
             @RequestBody UpdateOrderStatusRequest request,
             @RequestHeader(value = "Authorization", required = false) String bearerToken,
             @CookieValue(value = "accessToken", required = false) String accessToken) {
-        String token = orderService.getToken(bearerToken, accessToken);
-        return orderService.updateOrderStatus(orderId, request.getStatus(), request.getDeliveryProvider(), request.getTrackingNumber(), token);
+        try{
+            String token = orderService.getToken(bearerToken, accessToken);
+            ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "", orderService.updateOrderStatus(orderId, request.getStatus(), request.getDeliveryProvider(), request.getTrackingNumber(), token));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Errors when update an order: " + e.getMessage());
+        }
     }
     
 }
