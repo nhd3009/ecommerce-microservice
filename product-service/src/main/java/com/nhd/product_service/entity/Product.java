@@ -1,6 +1,6 @@
 package com.nhd.product_service.entity;
 
-import com.nhd.product_service.enums.ProductStatus;
+import com.nhd.commonlib.dto.enums.ProductStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -3,8 +3,8 @@ package com.nhd.product_service.request;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.nhd.product_service.enums.ProductStatus;
 
+import com.nhd.commonlib.dto.enums.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

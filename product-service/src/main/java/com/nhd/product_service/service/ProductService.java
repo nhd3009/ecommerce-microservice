@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.enums.ProductStatus;
 import com.nhd.commonlib.exception.BadRequestException;
 import com.nhd.commonlib.exception.ResourceNotFoundException;
-import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -18,89 +20,62 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.nhd.product_service.dto.ProductDto;
 import com.nhd.product_service.entity.Category;
 import com.nhd.product_service.entity.Product;
 import com.nhd.product_service.entity.ProductImage;
-import com.nhd.product_service.enums.ProductStatus;
 import com.nhd.product_service.mapper.ProductMapper;
 import com.nhd.product_service.repository.CategoryRepository;
 import com.nhd.product_service.repository.ProductRepository;
 import com.nhd.product_service.request.ProductRequest;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.specification.ProductSpecification;
-
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final FileStorageService fileStorageService;
 
-    public ProductService(CategoryRepository categoryRepository, ProductRepository productRepository,
-            FileStorageService fileStorageService) {
-        this.categoryRepository = categoryRepository;
-        this.productRepository = productRepository;
-        this.fileStorageService = fileStorageService;
-    }
-
     @Cacheable(value = "product", key = "#id")
-    public ApiResponse<ProductDto> getProductById(Long id) {
+    public ProductDto getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with ID: " + id + "not found"));
-        ProductDto productDto = ProductMapper.toDto(product);
-        return new ApiResponse<>(HttpStatus.OK.value(), "Product retrieved successfully", productDto);
+        return ProductMapper.toDto(product);
     }
 
     @Cacheable(value = "product_pages", key = "'page_'+#page+'_size_'+#size")
-    public ApiResponse<PageResponse<ProductDto>> getAllProducts(int page, int size) {
+    public PageResponse<ProductDto> getAllProducts(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Product> products = productRepository.findAll(pageable);
-        return getPageResponse(products);
-    }
-
-    @NonNull
-    public ApiResponse<PageResponse<ProductDto>> getPageResponse(Page<Product> products) {
-        List<ProductDto> productDtos = products.getContent().stream()
-                .map(ProductMapper::toDto)
-                .collect(Collectors.toList());
-        PageResponse<ProductDto> response = PageResponse.<ProductDto>builder()
-                .data(productDtos)
-                .totalElements(products.getTotalElements())
-                .totalPages(products.getTotalPages())
-                .currentPage(products.getNumber())
-                .pageSize(products.getSize())
-                .build();
-
-        return new ApiResponse<>(HttpStatus.OK.value(), "Products retrieved successfully", response);
+        return getProductPageResponse(products);
     }
 
     @Cacheable(value = "products_by_category", key = "'category_'+#categoryId+'_page_'+#page+'_size_'+#size")
-    public ApiResponse<PageResponse<ProductDto>> getProductsByCategory(Long categoryId, int page, int size) {
+    public PageResponse<ProductDto> getProductsByCategory(Long categoryId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Product> products = productRepository.findAllByCategoryId(categoryId, pageable);
-        return getPageResponse(products);
+        return getProductPageResponse(products);
     }
 
-    public ApiResponse<PageResponse<ProductDto>> getAllProductByFilter(ProductFilterRequest filterRequest, int page,
+    public PageResponse<ProductDto> getAllProductByFilter(ProductFilterRequest filterRequest, int page,
             int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Specification<Product> spec = ProductSpecification.filter(filterRequest);
 
         Page<Product> products = productRepository.findAll(spec, pageable);
-        return getPageResponse(products);
+        return getProductPageResponse(products);
     }
 
     @Caching(evict = {
         @CacheEvict(value = "product_pages", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true)
     })
-    public ApiResponse<ProductDto> createProduct(ProductRequest request) {
+    public ProductDto createProduct(ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow(
                 () -> new ResourceNotFoundException("Category with ID: " + request.getCategoryId() + " not found"));
 
@@ -125,8 +100,7 @@ public class ProductService {
         }
 
         Product savedProduct = productRepository.save(product);
-        ProductDto productDto = ProductMapper.toDto(savedProduct);
-        return new ApiResponse<>(HttpStatus.CREATED.value(), "Product created successfully", productDto);
+        return ProductMapper.toDto(savedProduct);
     }
 
     @Transactional
@@ -137,7 +111,7 @@ public class ProductService {
                 @CacheEvict(value = "products_by_category", allEntries = true)
         }
     )
-    public ApiResponse<ProductDto> updateProduct(Long id, ProductRequest request) {
+    public ProductDto updateProduct(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
@@ -185,11 +159,7 @@ public class ProductService {
 
         Product updatedProduct = productRepository.save(product);
 
-        ProductDto dto = ProductMapper.toDto(updatedProduct);
-        return new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Product updated successfully",
-                dto);
+        return ProductMapper.toDto(updatedProduct);
     }
 
     @Transactional
@@ -200,7 +170,7 @@ public class ProductService {
                 @CacheEvict(value = "products_by_category", allEntries = true)
         }
     )
-    public ApiResponse<String> updateStatusProduct(Long id) {
+    public ProductDto updateStatusProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
@@ -209,15 +179,12 @@ public class ProductService {
                 ? ProductStatus.INACTIVE
                 : ProductStatus.ACTIVE;
         product.setStatus(newStatus);
-        productRepository.save(product);
-        return new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Product status updated successfully",
-                "Product status is now " + newStatus.name());
+        Product saved = productRepository.save(product);
+        return ProductMapper.toDto(saved);
     }
 
     @Transactional
-    public ApiResponse<String> adjustStock(Long productId, int quantity) {
+    public String adjustStock(Long productId, int quantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
 
@@ -235,10 +202,7 @@ public class ProductService {
 
         productRepository.save(product);
 
-        return new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Stock updated successfully",
-                "Product stock now: " + newStock + ", status: " + product.getStatus());
+        return "Product stock now: " + newStock + ", status: " + product.getStatus();
     }
 
     @Caching(evict = {
@@ -246,7 +210,8 @@ public class ProductService {
         @CacheEvict(value = "product_pages", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true)
     })
-    public ApiResponse<String> deleteProduct(Long id) {
+    @Transactional
+    public String deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
@@ -256,9 +221,21 @@ public class ProductService {
 
         productRepository.delete(product);
 
-        return new ApiResponse<>(
-                HttpStatus.OK.value(),
-                "Product deleted successfully",
-                "Product with id " + id + " has been deleted");
+        return "Product with id " + id + " has been deleted";
+    }
+
+    @NonNull
+    public PageResponse<ProductDto> getProductPageResponse(Page<Product> products) {
+        List<ProductDto> productDtos = products.getContent().stream()
+                .map(ProductMapper::toDto)
+                .collect(Collectors.toList());
+
+        return PageResponse.<ProductDto>builder()
+                .data(productDtos)
+                .totalElements(products.getTotalElements())
+                .totalPages(products.getTotalPages())
+                .currentPage(products.getNumber())
+                .pageSize(products.getSize())
+                .build();
     }
 }
