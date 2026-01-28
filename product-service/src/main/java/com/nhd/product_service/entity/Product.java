@@ -48,6 +48,9 @@ public class Product {
   private BigDecimal price;
 
   @Column(nullable = false)
+  private BigDecimal importPrice;
+
+  @Column(nullable = false)
   private Integer stockQuantity;
 
   @Enumerated(EnumType.STRING)

@@ -32,64 +32,37 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<CategoryDto>> create(@Valid @RequestBody CreateCategoryRequest request) {
-        try{
-            CategoryDto response = categoryService.create(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(HttpStatus.OK.value(), "A category created successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when creating a category: " + e.getMessage());
-        }
+        CategoryDto response = categoryService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>(HttpStatus.OK.value(), "A category created successfully!", response));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CategoryDto>>> getAllCategories() {
-        try{
-            List<CategoryDto> response = categoryService.getAllCategories();
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Retrieved All Category Successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when fetch all category list: " + e.getMessage());
-        }
+        List<CategoryDto> response = categoryService.getAllCategories();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Retrieved All Category Successfully!", response));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryDto>> getCategoryById(@PathVariable("id") Long id){
-        try{
-            CategoryDto response = categoryService.getCategoryById(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Category Retrieved Successfully!", response));
-        } catch (ResourceNotFoundException e){
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when get category by id: " + e.getMessage());
-        }
+        CategoryDto response = categoryService.getCategoryById(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Category Retrieved Successfully!", response));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryDto>> updateCategory(@PathVariable Long id, @Valid @RequestBody UpdateCategoryRequest request) {
-        try{
-            CategoryDto response = categoryService.updateCategory(id, request);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A category has been updated successfully!", response));
-        } catch (Exception e){
-            throw new RuntimeException("Errors when updating a category: " + e.getMessage());
-        }
+        CategoryDto response = categoryService.updateCategory(id, request);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A category has been updated successfully!", response));
     }
 
     @PutMapping("/{id}/toggle-status")
     public ResponseEntity<ApiResponse<CategoryDto>> toggleCategoryStatus(@PathVariable Long id) {
-        try{
-            CategoryDto response = categoryService.updateCategoryStatus(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Category has been updated with status: " + response.getStatus(), response));
-        } catch (Exception e){
-            throw new RuntimeException("Errors when updating a category status: " + e.getMessage());
-        }
-
+        CategoryDto response = categoryService.updateCategoryStatus(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Category has been updated with status: " + response.getStatus(), response));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteCategory(@PathVariable Long id) {
-        try{
-            String response = categoryService.deleteCategory(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
-        } catch (Exception e){
-            throw new RuntimeException("Errors when deleting a category: " + e.getMessage());
-        }
+        String response = categoryService.deleteCategory(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
     }
 }

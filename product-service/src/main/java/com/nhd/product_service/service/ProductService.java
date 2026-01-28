@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.ProductOrderView;
 import com.nhd.commonlib.dto.enums.ProductStatus;
 import com.nhd.commonlib.exception.BadRequestException;
 import com.nhd.commonlib.exception.ResourceNotFoundException;
@@ -222,6 +223,18 @@ public class ProductService {
         productRepository.delete(product);
 
         return "Product with id " + id + " has been deleted";
+    }
+
+    public ProductOrderView getProductForOrder(Long id){
+        Product product = productRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Product with ID: " + id + "not found"));
+        return ProductOrderView.builder()
+                .productId(product.getId())
+                .productName(product.getName())
+                .categoryId(product.getCategory().getId())
+                .categoryName(product.getCategory().getName())
+                .sellPrice(product.getPrice())
+                .importPrice(product.getImportPrice())
+        .build();
     }
 
     @NonNull

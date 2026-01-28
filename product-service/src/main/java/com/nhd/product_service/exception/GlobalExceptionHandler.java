@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         ApiResponse<String> response = new ApiResponse<>(HttpStatus.NOT_FOUND.value(), "RESOURCE_NOT_FOUND",
                 ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND.value()).body(response);
     }
 
     @ExceptionHandler(Exception.class)
@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
         ApiResponse<String> response = new ApiResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "INTERNAL_SERVER_ERROR",
                 ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR.value()).body(response);
     }
 
     @ExceptionHandler(DuplicateException.class)

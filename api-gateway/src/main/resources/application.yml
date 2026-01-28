@@ -13,6 +13,17 @@ spring:
             - Path=/api/v1/auth/**
 
         ## ---------- PRODUCT SERVICE ----------
+        ## Internal Product for Order
+        - id: product-service-internal
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/internal/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
         ## Public READ APIs
         - id: product-service-read
           uri: lb://PRODUCT-SERVICE
