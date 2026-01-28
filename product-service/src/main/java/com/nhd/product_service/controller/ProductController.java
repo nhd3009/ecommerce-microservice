@@ -1,6 +1,7 @@
 package com.nhd.product_service.controller;
 
 import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.ProductOrderView;
 import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
@@ -40,37 +41,21 @@ public class ProductController {
     public ResponseEntity<ApiResponse<PageResponse<ProductDto>>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        try{
-            PageResponse<ProductDto> response = productService.getAllProducts(page, size);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All products retrieved successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving all products: " + e.getMessage());
-        }
-
+        PageResponse<ProductDto> response = productService.getAllProducts(page, size);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All products retrieved successfully!", response));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable("id") Long id) {
-        try{
-            ProductDto response = productService.getProductById(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product retrieved successfully!", response));
-        }catch (ResourceNotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving a product: "+ e.getMessage());
-        }
-
+        ProductDto response = productService.getProductById(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product retrieved successfully!", response));
     }
 
     @PostMapping("/{id}/adjust-stock")
     public ResponseEntity<ApiResponse<String>> adjustProductStock(@PathVariable("id") Long id,
             @RequestParam("quantity") int quantity) {
-        try{
-            String response = productService.adjustStock(id, quantity);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when adjusting product stock: " + e.getMessage());
-        }
+        String response = productService.adjustStock(id, quantity);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
     }
 
     @GetMapping("/category/{categoryId}")
@@ -78,12 +63,8 @@ public class ProductController {
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        try{
-            PageResponse<ProductDto> response = productService.getProductsByCategory(categoryId, page, size);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All Products from categoryID: " + categoryId + " retrieved successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving products by category: " + e.getMessage());
-        }
+        PageResponse<ProductDto> response = productService.getProductsByCategory(categoryId, page, size);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All Products from categoryID: " + categoryId + " retrieved successfully!", response));
     }
 
     @GetMapping("/filter")
@@ -94,19 +75,14 @@ public class ProductController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-
-        try{
-            ProductFilterRequest filterRequest = ProductFilterRequest.builder()
-                    .name(name)
-                    .categoryId(categoryId)
-                    .minPrice(minPrice)
-                    .maxPrice(maxPrice)
-                    .build();
-            PageResponse<ProductDto> response = productService.getAllProductByFilter(filterRequest, page, size);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Products has been retrived successfull with filters", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when filtering all products: " + e.getMessage());
-        }
+        ProductFilterRequest filterRequest = ProductFilterRequest.builder()
+                .name(name)
+                .categoryId(categoryId)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .build();
+        PageResponse<ProductDto> response = productService.getAllProductByFilter(filterRequest, page, size);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Products has been retrieved successfully with filters", response));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -114,21 +90,9 @@ public class ProductController {
             @RequestPart("productInfo") ProductRequest productRequest,
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        try{
-            if (thumbnail != null && !thumbnail.isEmpty()) {
-                String thumbnailUrl = fileStorageService.saveFile(thumbnail);
-                productRequest.setThumbnailUrl(thumbnailUrl);
-            }
-
-            if (images != null && !images.isEmpty()) {
-                List<String> imageUrls = fileStorageService.saveListFiles(images);
-                productRequest.setImageUrls(imageUrls);
-            }
-            ProductDto response = productService.createProduct(productRequest);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product has been created successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when creating product: " + e.getMessage());
-        }
+        handleImage(productRequest, thumbnail, images);
+        ProductDto response = productService.createProduct(productRequest);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product has been created successfully!", response));
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -137,42 +101,40 @@ public class ProductController {
             @RequestPart("productInfo") ProductRequest request,
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        try{
-            if (thumbnail != null && !thumbnail.isEmpty()) {
-                String thumbnailUrl = fileStorageService.saveFile(thumbnail);
-                request.setThumbnailUrl(thumbnailUrl);
-            }
-
-            if (images != null && !images.isEmpty()) {
-                List<String> imageUrls = fileStorageService.saveListFiles(images);
-                request.setImageUrls(imageUrls);
-            }
-            ProductDto response = productService.updateProduct(id, request);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A Product has been updated successfully!", response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when updating a product: " + e.getMessage());
-        }
+        handleImage(request, thumbnail, images);
+        ProductDto response = productService.updateProduct(id, request);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A Product has been updated successfully!", response));
 
     }
 
     @PutMapping("/{id}/toggle-status")
     public ResponseEntity<ApiResponse<ProductDto>> updateProductStatus(@PathVariable Long id) {
-        try{
-            ProductDto response = productService.updateStatusProduct(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Product has been updated with status: " + response.getStatus(), response));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when updating a product status: " + e.getMessage());
-        }
+        ProductDto response = productService.updateStatusProduct(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Product has been updated with status: " + response.getStatus(), response));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteProduct(@PathVariable Long id) {
-        try{
-            String response = productService.deleteProduct(id);
-            return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when deleting a product status: " + e.getMessage());
-        }
+        String response = productService.deleteProduct(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), response, null));
     }
 
+    @GetMapping("/internal/{id}")
+    public ResponseEntity<ApiResponse<ProductOrderView>> getInternalProductForOrder(@PathVariable Long id){
+        ProductOrderView result = productService.getProductForOrder(id);
+        ApiResponse<ProductOrderView> response = new ApiResponse<>(HttpStatus.OK.value(), "Internal Product Retrieved Successfully!", result);
+        return ResponseEntity.ok(response);
+    }
+
+    private void handleImage(@RequestPart("productInfo") ProductRequest request, @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail, @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            String thumbnailUrl = fileStorageService.saveFile(thumbnail);
+            request.setThumbnailUrl(thumbnailUrl);
+        }
+
+        if (images != null && !images.isEmpty()) {
+            List<String> imageUrls = fileStorageService.saveListFiles(images);
+            request.setImageUrls(imageUrls);
+        }
+    }
 }
