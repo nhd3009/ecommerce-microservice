@@ -8,10 +8,11 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SaleItemDto {
+
     private Long orderItemId;
 
     private Long productId;

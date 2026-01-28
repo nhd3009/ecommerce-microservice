@@ -3,11 +3,16 @@ package com.nhd.order_service.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.ProductOrderView;
 import com.nhd.commonlib.dto.UserDto;
+import com.nhd.commonlib.event.order_analytics.OrderCompletedEvent;
+import com.nhd.commonlib.event.order_analytics.SaleItemDto;
 import com.nhd.commonlib.event.order_notification.OrderItemEvent;
 import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import com.nhd.commonlib.exception.BadRequestException;
@@ -15,20 +20,20 @@ import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.exception.UnauthorizedException;
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
+import com.nhd.order_service.publisher.OrderAnalyticsEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nhd.order_service.client.AuthFeignClient;
 import com.nhd.order_service.client.ProductFeignClient;
-import com.nhd.order_service.config.OrderEventPublisher;
+import com.nhd.order_service.publisher.OrderNotificationEventPublisher;
 import com.nhd.order_service.dto.OrderDto;
 import com.nhd.order_service.entity.Order;
 import com.nhd.order_service.entity.OrderItem;
@@ -49,7 +54,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final AuthFeignClient authClient;
     private final ProductFeignClient productClient;
-    private final OrderEventPublisher orderEventPublisher;
+    private final OrderNotificationEventPublisher orderNotificationEventPublisher;
+    private final OrderAnalyticsEventPublisher orderAnalyticsEventPublisher;
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
     private static final String ROLE_USER = "ROLE_USER";
@@ -61,20 +67,29 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalPrice = BigDecimal.ZERO;
         for (OrderItemRequest itemReq : request.getItems()) {
-            ResponseEntity<ApiResponse<ProductDto>> productResponse = productClient.getProductById(itemReq.getProductId());
-            ProductDto product = productResponse.getBody() != null ? productResponse.getBody().getData() : null;
+            ResponseEntity<ApiResponse<ProductOrderView>> productResponse = productClient.getInternalProductForOrder(itemReq.getProductId());
+            ProductOrderView product = productResponse.getBody() != null ? productResponse.getBody().getData() : null;
             if (product == null) {
                 throw new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId());
             }
             if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new BadRequestException("Not enough stock for product: " + product.getName());
+                throw new BadRequestException("Not enough stock for product: " + product.getProductName());
             }
 
-            productClient.adjustProductStock(product.getId(), itemReq.getQuantity());
-            BigDecimal subTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            productClient.adjustProductStock(product.getProductId(), itemReq.getQuantity());
+            BigDecimal subTotal = product.getSellPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
             totalPrice = totalPrice.add(subTotal);
 
-            OrderItem orderItem = OrderItem.builder().productId(product.getId()).productName(product.getName()).price(product.getPrice()).quantity(itemReq.getQuantity()).subTotal(subTotal).build();
+            OrderItem orderItem = OrderItem.builder()
+                    .productId(product.getProductId())
+                    .productName(product.getProductName())
+                    .categoryId(product.getCategoryId())
+                    .categoryName(product.getCategoryName())
+                    .price(product.getSellPrice())
+                    .importPrice(product.getImportPrice())
+                    .quantity(itemReq.getQuantity())
+                    .subTotal(subTotal)
+                    .build();
             orderItems.add(orderItem);
         }
 
@@ -93,7 +108,7 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         OrderNotificationEvent orderEvent = returnNotificationEvent(savedOrder);
-        orderEventPublisher.publishOrderNotification(orderEvent);
+        orderNotificationEventPublisher.publishOrderNotification(orderEvent);
         return OrderMapper.toOrderDto(savedOrder);
     }
 
@@ -207,6 +222,12 @@ public class OrderService {
         order.setStatus(newStatus);
         orderRepository.save(order);
 
+        if (newStatus == OrderStatus.COMPLETED) {
+
+            OrderCompletedEvent event = buildOrderCompletedEvent(order);
+            orderAnalyticsEventPublisher.publish(event);
+        }
+
         if (List.of(OrderStatus.DELIVERING, OrderStatus.CANCELLED).contains(newStatus)) {
 
             OrderNotificationEvent event = returnNotificationEvent(order);
@@ -217,7 +238,7 @@ public class OrderService {
             if(newStatus.equals(OrderStatus.CANCELLED)){
                 event.setMessage("Your order #" + order.getId() + " has been cancelled.");
             }
-            orderEventPublisher.publishOrderNotification(event);
+            orderNotificationEventPublisher.publishOrderNotification(event);
         }
         return OrderMapper.toOrderDto(order);
     }
@@ -264,5 +285,34 @@ public class OrderService {
                                             .items(orderItemEvents)
                                             .totalAmount(savedOrder.getTotalAmount())
                                             .build();
+    }
+
+    private OrderCompletedEvent buildOrderCompletedEvent(Order order) {
+
+        List<SaleItemDto> items = order.getItems().stream()
+                .map(item -> SaleItemDto.builder()
+                        .orderItemId(item.getId())
+                        .productId(item.getProductId())
+                        .categoryId(item.getCategoryId())
+                        .productName(item.getProductName())
+                        .categoryName(item.getCategoryName())
+                        .quantity(item.getQuantity())
+                        .sellPrice(item.getPrice())
+                        .importPrice(item.getImportPrice())
+                        .build()
+                )
+                .collect(Collectors.toList());
+
+        return OrderCompletedEvent.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .orderDate(
+                        order.getCreatedAt()
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                )
+                .totalAmount(order.getTotalAmount())
+                .items(items)
+                .build();
     }
 }

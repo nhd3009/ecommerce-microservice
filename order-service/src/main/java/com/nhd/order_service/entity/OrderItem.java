@@ -28,7 +28,10 @@ public class OrderItem {
 
     private Long productId;
     private String productName;
+    private Long categoryId;
+    private String categoryName;
     private BigDecimal price;
+    private BigDecimal importPrice;
     private Integer quantity;
     private BigDecimal subTotal;
 
