@@ -38,33 +38,24 @@ public class OrderController {
         @RequestBody CreateOrderRequest request,
         @RequestHeader(value = "Authorization", required = false) String bearerToken,
         @CookieValue(value = "accessToken", required = false) String accessToken) {
-        try{
-            String token = orderService.getToken(bearerToken, accessToken);
-            OrderDto result = orderService.placeOrder(request, token);
+        String token = orderService.getToken(bearerToken, accessToken);
+        OrderDto result = orderService.placeOrder(request, token);
 
-            ApiResponse<OrderDto> response = new ApiResponse<>(
-                    HttpStatus.CREATED.value(),
-                    "Order has been placed successfully!",
-                    result
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e){
-            throw new RuntimeException("Errors when placing an order: " + e.getMessage());
-        }
-
+        ApiResponse<OrderDto> response = new ApiResponse<>(
+                HttpStatus.CREATED.value(),
+                "Order has been placed successfully!",
+                result
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDto>> getOrderId(@RequestHeader(value = "Authorization", required = false) String bearerToken,
                                             @CookieValue(value = "accessToken", required = false) String accessToken,
                                             @PathVariable Long id) {
-        try{
-            String token = orderService.getToken(bearerToken, accessToken);
-            ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "", orderService.getOrderById(id, token));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving an order: " + e.getMessage());
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
+        ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "An order retrieved successfully!", orderService.getOrderById(id, token));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/my-orders")
@@ -74,13 +65,9 @@ public class OrderController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ){
-        try{
-            String token = orderService.getToken(bearerToken, accessToken);
-            ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all my orders successfully!", orderService.getAllMyOrder(token, page, size));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving all my orders: " + e.getMessage());
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
+        ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all my orders successfully!", orderService.getAllMyOrder(token, page, size));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/admin")
@@ -94,13 +81,9 @@ public class OrderController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
-        try{
-            String token = orderService.getToken(bearerToken, accessToken);
-            ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all orders successfully!", orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when retrieving all orders: " + e.getMessage());
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
+        ApiResponse<PageResponse<OrderDto>> response = new ApiResponse<>(HttpStatus.OK.value(), "Retrieved all orders successfully!", orderService.getAllOrdersForAdmin(token, status, userId, fromDate, toDate, page, size));
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/status")
@@ -108,13 +91,9 @@ public class OrderController {
             @RequestBody UpdateOrderStatusRequest request,
             @RequestHeader(value = "Authorization", required = false) String bearerToken,
             @CookieValue(value = "accessToken", required = false) String accessToken) {
-        try{
-            String token = orderService.getToken(bearerToken, accessToken);
-            ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "", orderService.updateOrderStatus(orderId, request.getStatus(), request.getDeliveryProvider(), request.getTrackingNumber(), token));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            throw new RuntimeException("Errors when update an order: " + e.getMessage());
-        }
+        String token = orderService.getToken(bearerToken, accessToken);
+        ApiResponse<OrderDto> response = new ApiResponse<>(HttpStatus.OK.value(), "Order has been updated successfully!", orderService.updateOrderStatus(orderId, request.getStatus(), request.getDeliveryProvider(), request.getTrackingNumber(), token));
+        return ResponseEntity.ok(response);
     }
     
 }
