@@ -1,6 +1,7 @@
 package com.nhd.order_service.client;
 
 import com.nhd.commonlib.dto.ProductDto;
+import com.nhd.commonlib.dto.ProductOrderView;
 import com.nhd.commonlib.response.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface ProductFeignClient {
     @GetMapping("/api/v1/products/{id}")
     ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable Long id);
+
+    @GetMapping("/api/v1/products/internal/{id}")
+    ResponseEntity<ApiResponse<ProductOrderView>> getInternalProductForOrder(@PathVariable Long id);
 
     @PostMapping("/api/v1/products/{id}/adjust-stock")
     ResponseEntity<ApiResponse<String>> adjustProductStock(@PathVariable Long id, @RequestParam int quantity);
