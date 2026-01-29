@@ -234,6 +234,7 @@ public class ProductService {
                 .categoryName(product.getCategory().getName())
                 .sellPrice(product.getPrice())
                 .importPrice(product.getImportPrice())
+                .stockQuantity(product.getStockQuantity())
         .build();
     }
 

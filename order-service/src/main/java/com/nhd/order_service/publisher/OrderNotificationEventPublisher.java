@@ -1,4 +1,4 @@
-package com.nhd.order_service.config;
+package com.nhd.order_service.publisher;
 
 import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderEventPublisher {
+public class OrderNotificationEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private static final String TOPIC = "order-notification-events";

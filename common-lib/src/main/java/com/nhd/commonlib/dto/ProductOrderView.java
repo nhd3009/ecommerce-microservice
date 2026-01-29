@@ -18,4 +18,5 @@ public class ProductOrderView {
     private BigDecimal importPrice;
     private Long categoryId;
     private String categoryName;
+    private int stockQuantity;
 }
