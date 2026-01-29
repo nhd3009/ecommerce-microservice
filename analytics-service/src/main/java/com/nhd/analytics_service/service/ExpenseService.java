@@ -5,11 +5,12 @@ import com.nhd.analytics_service.entity.DailyRevenue;
 import com.nhd.analytics_service.entity.Expense;
 import com.nhd.analytics_service.repository.DailyRevenueRepository;
 import com.nhd.analytics_service.repository.ExpenseRepository;
-import com.nhd.analytics_service.request.CreateExpenseRequest;
 import com.nhd.commonlib.exception.BadRequestException;
+import com.nhd.commonlib.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nhd.analytics_service.request.ExpenseRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,7 +24,7 @@ public class ExpenseService {
     private final DailyRevenueRepository dailyRepo;
 
     @Transactional
-    public ExpenseDto addExpense(CreateExpenseRequest req) {
+    public ExpenseDto addExpense(ExpenseRequest req) {
 
         Expense expense = Expense.builder()
                 .expenseDate(req.getDate())
@@ -44,6 +45,56 @@ public class ExpenseService {
                 .expenseDate(expense.getExpenseDate())
                 .note(expense.getNote())
                 .build();
+    }
+
+    @Transactional
+    public ExpenseDto updateExpense(Long expenseId, ExpenseRequest request) {
+
+        Expense expense = expenseRepo.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+
+        BigDecimal oldAmount = expense.getAmount();
+        LocalDate oldDate = expense.getExpenseDate();
+
+        expense.setName(request.getName());
+        expense.setAmount(request.getAmount());
+        expense.setType(request.getType());
+        expense.setNote(request.getNote());
+        expense.setExpenseDate(request.getDate());
+
+        expenseRepo.save(expense);
+
+        if (oldDate.equals(request.getDate())) {
+            BigDecimal delta = request.getAmount().subtract(oldAmount);
+            updateDailyExpense(oldDate, delta);
+        }
+        else {
+            updateDailyExpense(oldDate, oldAmount.negate());
+            updateDailyExpense(request.getDate(), request.getAmount());
+        }
+
+        return ExpenseDto.builder()
+                .id(expense.getId())
+                .name(expense.getName())
+                .amount(expense.getAmount())
+                .type(expense.getType())
+                .expenseDate(expense.getExpenseDate())
+                .note(expense.getNote())
+                .build();
+    }
+
+    @Transactional
+    public void deleteExpense(Long expenseId) {
+
+        Expense expense = expenseRepo.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
+
+        BigDecimal amount = expense.getAmount();
+        LocalDate date = expense.getExpenseDate();
+
+        expenseRepo.delete(expense);
+
+        updateDailyExpense(date, amount.negate());
     }
 
     public List<ExpenseDto> getExpenses(LocalDate from, LocalDate to) {
@@ -93,6 +144,29 @@ public class ExpenseService {
 
         daily.setNetProfit(
                 daily.getTotalProfit().subtract(daily.getTotalExpense())
+        );
+
+        dailyRepo.save(daily);
+    }
+
+    private void updateDailyExpense(LocalDate date, BigDecimal delta) {
+        DailyRevenue daily = dailyRepo.findById(date)
+                .orElseGet(() -> DailyRevenue.builder()
+                        .date(date)
+                        .totalExpense(BigDecimal.ZERO)
+                        .totalRevenue(BigDecimal.ZERO)
+                        .totalCost(BigDecimal.ZERO)
+                        .totalProfit(BigDecimal.ZERO)
+                        .totalOrders(0L)
+                        .totalItemsSold(0L)
+                        .netProfit(BigDecimal.ZERO)
+                        .build());
+
+        daily.setTotalExpense(daily.getTotalExpense().add(delta));
+
+        daily.setNetProfit(
+                daily.getTotalProfit()
+                        .subtract(daily.getTotalExpense())
         );
 
         dailyRepo.save(daily);

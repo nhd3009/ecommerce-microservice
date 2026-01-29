@@ -1,7 +1,7 @@
 package com.nhd.analytics_service.controller;
 
 import com.nhd.analytics_service.dto.ExpenseDto;
-import com.nhd.analytics_service.request.CreateExpenseRequest;
+import com.nhd.analytics_service.request.ExpenseRequest;
 import com.nhd.analytics_service.service.ExpenseService;
 import com.nhd.commonlib.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -20,7 +20,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
-    public ApiResponse<ExpenseDto> create(@RequestBody @Valid CreateExpenseRequest request) {
+    public ApiResponse<ExpenseDto> create(@RequestBody @Valid ExpenseRequest request) {
         return new ApiResponse<>(
                 HttpStatus.CREATED.value(),
                 "Expense created successfully",
@@ -37,6 +37,30 @@ public class ExpenseController {
                 HttpStatus.OK.value(),
                 "Expenses retrieved successfully",
                 expenseService.getExpenses(from, to)
+        );
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<ExpenseDto> update(
+            @PathVariable Long id,
+            @RequestBody @Valid ExpenseRequest request) {
+
+        return new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Expense updated successfully",
+                expenseService.updateExpense(id, request)
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+
+        expenseService.deleteExpense(id);
+
+        return new ApiResponse<>(
+                HttpStatus.OK.value(),
+                "Expense deleted successfully",
+                null
         );
     }
 }
