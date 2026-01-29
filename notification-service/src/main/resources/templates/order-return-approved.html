@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Return Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+    <h2>✅ Your return request has been approved</h2>
+
+    <p>Dear customer,</p>
+
+    <p>
+        Your return request for <strong>Order #${orderId}</strong> has been approved.
+    </p>
+
+    <hr/>
+
+    <h3>📦 Return details</h3>
+    <ul>
+        <li><strong>Return ID:</strong> ${returnId}</li>
+        <li><strong>Product:</strong> ${productName}</li>
+        <li><strong>Quantity:</strong> ${quantity}</li>
+        <li><strong>Refund Amount:</strong> ${refundAmount}</li>
+        <li><strong>Refund Method:</strong> ${refundMethod}</li>
+        <li><strong>Receiver:</strong> ${receiver}</li>
+    </ul>
+
+    <#if note?? && note?length gt 0>
+        <p><strong>Note:</strong> ${note}</p>
+    </#if>
+
+    <p>
+        <em>Approved at: ${approvedAt}</em>
+    </p>
+
+    <hr/>
+
+    <p>
+        The refund will be processed shortly.  
+        If you have any questions, feel free to contact our support team.
+    </p>
+
+    <p>
+        Best regards,<br/>
+        <strong>Frieren E-commerce Team</strong>
+    </p>
+</body>
+</html>

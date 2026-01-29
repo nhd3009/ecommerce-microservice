@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
+import com.nhd.commonlib.event.order_notification.OrderReturnApprovedEvent;
+
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,39 @@ public class EmailService {
             log.info("[MAIL SENT] to {}", event.getEmail());
         } catch (Exception e) {
             log.error("[MAIL ERROR] Failed to send to {}: {}", event.getEmail(), e.getMessage());
+        }
+    }
+
+    public void sendOrderReturnApprovedEmail(OrderReturnApprovedEvent event){
+        try {
+            Map<String, Object> model = new HashMap<>();
+            model.put("orderId", event.getOrderId());
+            model.put("returnId", event.getReturnId());
+            model.put("productName", event.getProductName());
+            model.put("quantity", event.getQuantity());
+            model.put("refundAmount", event.getRefundAmount());
+            model.put("refundMethod", event.getRefundMethod());
+            model.put("receiver", event.getReceiver());
+            model.put("note", event.getNote());
+            model.put("approvedAt", event.getApprovedAt());
+
+            Template template = freemarkerConfig.getTemplate("order-return-approved.html");
+            String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(template, model);
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("no-reply@frieren.com", "Frieren E-commerce Team");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Your return request has been approved – Order #" + event.getOrderId());
+            helper.setText(htmlBody, true);
+
+            mailSender.send(message);
+            log.info("[RETURN APPROVED MAIL SENT] to {}", event.getEmail());
+
+        } catch (Exception e) {
+            log.error("[RETURN APPROVED MAIL ERROR] Failed to send to {}: {}", event.getEmail(), e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 }

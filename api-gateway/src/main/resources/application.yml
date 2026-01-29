@@ -55,6 +55,7 @@ spring:
               args:
                 requiredRoles: ROLE_ADMIN
 
+        ## ------------- ORDER SERVER -----------------
         - id: order-service
           uri: lb://ORDER-SERVICE
           predicates:
@@ -71,6 +72,26 @@ spring:
             - name: RoleFilter
               args:
                 requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+
+        - id: order-return-user
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/order-return/user/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_USER
+        
+        - id: order-return-admin
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/order-return/admin/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_EMPLOYEE,ROLE_ADMIN
 
         ## ---------- ANALYTICS SERVICE ----------
         - id: analytics-service-read
