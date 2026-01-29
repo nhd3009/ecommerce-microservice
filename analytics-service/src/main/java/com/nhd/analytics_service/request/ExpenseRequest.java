@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateExpenseRequest {
+public class ExpenseRequest {
     private LocalDate date;
     private String name;
     private BigDecimal amount;

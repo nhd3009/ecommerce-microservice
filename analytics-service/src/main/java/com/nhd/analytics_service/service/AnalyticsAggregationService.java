@@ -91,7 +91,10 @@ public class AnalyticsAggregationService {
         daily.setTotalProfit(daily.getTotalProfit().add(profitSum));
         daily.setTotalOrders(daily.getTotalOrders() + 1);
         daily.setTotalItemsSold(daily.getTotalItemsSold() + itemCount);
-
+        daily.setNetProfit(
+            daily.getTotalProfit()
+                .subtract(daily.getTotalExpense())
+        );
         dailyRepo.save(daily);
     }
 }

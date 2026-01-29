@@ -83,16 +83,26 @@ spring:
             - name: RoleFilter
               args:
                 requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
-        - id: expense-service-read
+        - id: expense-service
           uri: lb://ANALYTICS-SERVICE
           predicates:
             - Path=/api/v1/expenses/**
-            - Method=GET,POST
+            - Method=GET,POST,PUT
           filters:
             - name: AuthenticationFilter
             - name: RoleFilter
               args:
                 requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+        - id: expense-service-delete
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/v1/expenses/**
+            - Method=DELETE
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN
         - id: analytics-service-write
           uri: lb://ANALYTICS-SERVICE
           predicates:
