@@ -6,6 +6,7 @@ import java.util.Map;
 import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -22,9 +23,9 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 @Configuration
 @EnableKafka
-public class KafkaConsumerConfig {
+public class KafkaOrderNotificationConsumerConfig {
     @Bean
-    public ConsumerFactory<String, OrderNotificationEvent> consumerFactory() {
+    public ConsumerFactory<String, OrderNotificationEvent> orderNotificationConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service-group");
@@ -43,8 +44,8 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, OrderNotificationEvent> kafkaListenerContainerFactory(
-            ConsumerFactory<String, OrderNotificationEvent> consumerFactory,
+    public ConcurrentKafkaListenerContainerFactory<String, OrderNotificationEvent> orderNotificationKafkaListenerContainerFactory(
+            @Qualifier("orderNotificationConsumerFactory") ConsumerFactory<String, OrderNotificationEvent> consumerFactory,
             KafkaTemplate<String, Object> kafkaTemplate) {
 
         ConcurrentKafkaListenerContainerFactory<String, OrderNotificationEvent> factory =

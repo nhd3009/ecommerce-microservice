@@ -1,10 +1,7 @@
 package com.nhd.analytics_service.entity;
 
 import com.nhd.analytics_service.enums.ExpenseType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -19,7 +16,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class Expense {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
