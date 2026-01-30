@@ -28,7 +28,9 @@ public class ReturnTransaction {
     private Long orderItemId;
 
     private Long productId;
+    private String productName;
     private Long categoryId;
+    private String categoryName;
 
     private Integer quantity;
 

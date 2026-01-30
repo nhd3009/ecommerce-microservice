@@ -26,5 +26,9 @@ public class DailyRevenue {
     private Long totalOrders;
     private Long totalItemsSold;
     private BigDecimal totalExpense;
+
+    private Long totalItemReturned;
+    private BigDecimal totalRefundAmount;
+
     private BigDecimal netProfit;
 }

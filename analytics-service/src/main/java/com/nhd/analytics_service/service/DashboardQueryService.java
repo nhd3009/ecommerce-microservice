@@ -61,6 +61,8 @@ public class DashboardQueryService {
                 .totalOrders(dr.getTotalOrders())
                 .totalItemsSold(dr.getTotalItemsSold())
                 .totalExpense(dr.getTotalExpense())
+                .totalItemReturned(dr.getTotalItemReturned())
+                .totalRefundAmount(dr.getTotalRefundAmount())
                 .netProfit(dr.getNetProfit())
                 .build())
                 .toList();

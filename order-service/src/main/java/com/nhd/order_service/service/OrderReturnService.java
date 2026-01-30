@@ -13,6 +13,7 @@ import com.nhd.order_service.entity.OrderReturn;
 import com.nhd.order_service.enums.OrderStatus;
 import com.nhd.order_service.enums.ReturnStatus;
 import com.nhd.order_service.mapper.OrderReturnMapper;
+import com.nhd.order_service.publisher.OrderReturnAnalyticsPublisher;
 import com.nhd.order_service.publisher.OrderReturnNotificationPublisher;
 import com.nhd.order_service.repository.OrderItemRepository;
 import com.nhd.order_service.repository.OrderRepository;
@@ -36,9 +37,8 @@ public class OrderReturnService {
     private final OrderItemRepository orderItemRepo;
     private final OrderReturnRepository orderReturnRepo;
     private final AuthFeignClient authClient;
-    private final OrderReturnNotificationPublisher orderReturnApprovedPublisher;
-    private static final String ROLE_ADMIN = "ROLE_ADMIN";
-    private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+    private final OrderReturnNotificationPublisher orderReturnNotificationPublisher;
+    private final OrderReturnAnalyticsPublisher orderReturnAnalyticsPublisher;
     private static final String ROLE_USER = "ROLE_USER";
 
     @Transactional
@@ -82,7 +82,7 @@ public class OrderReturnService {
                 .orderId(orderId)
                 .orderItemId(item.getId())
                 .userId(user.getId())
-                .userEmail(!request.getEmail().isEmpty() || request.getEmail() != null ? request.getEmail() : user.getEmail())
+                .userEmail(request.getEmail() != null && !request.getEmail().isEmpty() ? request.getEmail() : user.getEmail())
                 .quantity(request.getQuantity())
                 .refundAmount(refundAmount)
                 .returnedReason(request.getReason())
@@ -114,7 +114,7 @@ public class OrderReturnService {
 
         entity.setStatus(ReturnStatus.APPROVED);
         orderReturnRepo.save(entity);
-        orderReturnApprovedPublisher.publish(entity, item);
+        orderReturnNotificationPublisher.publish(entity, item);
         return OrderReturnMapper.toDto(entity);
     }
 
@@ -133,15 +133,19 @@ public class OrderReturnService {
 
         OrderItem item = orderItemRepo.findById(entity.getOrderItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
-                
+
         entity.setStatus(ReturnStatus.REJECTED);
         entity.setRejectedReason(reason);
         orderReturnRepo.save(entity);
-        orderReturnApprovedPublisher.publish(entity, item);
+        orderReturnNotificationPublisher.publish(entity, item);
         return OrderReturnMapper.toDto(entity);
     }
 
-    public void completeReturn(Long returnId) {
+    public OrderReturnDto completeReturn(Long returnId, String token) {
+        UserDto user = getUserFromToken(token);
+        if(user.getRoles().contains(ROLE_USER)){
+            throw new UnauthorizedException("You are not allowed to set status!");
+        }
         OrderReturn entity = orderReturnRepo.findById(returnId)
                 .orElseThrow(() -> new ResourceNotFoundException("Return not found"));
 
@@ -162,7 +166,8 @@ public class OrderReturnService {
 
         orderReturnRepo.save(entity);
 
-        // publishEvents(entity, item);
+        orderReturnAnalyticsPublisher.publishEvents(entity, item);
+        return OrderReturnMapper.toDto(entity);
     }
 
     public UserDto getUserFromToken(String bearerToken) {
