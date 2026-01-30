@@ -14,21 +14,21 @@ import java.time.ZoneId;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderReturnEventPublisher {
+public class OrderReturnCompletedPublisher {
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private static final String TOPIC_ORDER_RETURNED = "order.returned";
-    private static final String TOPIC_ORDER_RETURNED_COMPLETE = "order-return.completed";
+    private static final String TOPIC_ORDER_RETURNED = "order.returned.complete";
 
     private void publishEvents(OrderReturn entity, OrderItem item) {
 
-        // 1️⃣ Analytics
         OrderReturnCompletedEvent analyticsEvent =
                 OrderReturnCompletedEvent.builder()
                         .returnId(entity.getId())
                         .orderId(entity.getOrderId())
                         .orderItemId(entity.getOrderItemId())
                         .productId(item.getProductId())
+                        .productName(item.getProductName())
                         .categoryId(item.getCategoryId())
+                        .categoryName(item.getCategoryName())
                         .quantity(entity.getQuantity())
                         .refundRevenue(entity.getRefundAmount())
                         .refundCost(
@@ -50,19 +50,6 @@ public class OrderReturnEventPublisher {
                         .build();
 
         kafkaTemplate.send(TOPIC_ORDER_RETURNED, analyticsEvent);
-
-        // 2️⃣ Notification
-//        OrderReturnCompletedNotificationEvent notifyEvent =
-//                OrderReturnCompletedNotificationEvent.builder()
-//                        .userId(entity.getUserId())
-//                        .orderId(entity.getOrderId())
-//                        .returnId(entity.getId())
-//                        .refundAmount(entity.getRefundAmount())
-//                        .method(entity.getRefundInfo().getMethod())
-//                        .message("Your refund has been processed successfully")
-//                        .build();
-
-//        kafkaTemplate.send(TOPIC_ORDER_RETURNED_COMPLETE, notifyEvent);
 
         log.info("[KAFKA] Published return events for returnId={}", entity.getId());
     }
