@@ -59,7 +59,7 @@ public class AnalyticsKafkaConsumerConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(analyticsConsumerFactory);
-
+        factory.getContainerProperties().setObservationEnabled(true);
         ExponentialBackOffWithMaxRetries backOff =
                 new ExponentialBackOffWithMaxRetries(3);
         backOff.setInitialInterval(1000L);

@@ -56,7 +56,7 @@ public class AnalyticsOrderReturnConsumerConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(consumerFactory);
-
+        factory.getContainerProperties().setObservationEnabled(true);
         ExponentialBackOff backOff = new ExponentialBackOff();
         backOff.setInitialInterval(1000L);
         backOff.setMultiplier(2.0);

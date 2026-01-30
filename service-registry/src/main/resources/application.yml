@@ -7,3 +7,11 @@ eureka:
       defaultZone: ${DEFAULT_EUREKA_URL}
     fetch-registry: false
     register-with-eureka: false
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL}

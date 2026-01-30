@@ -30,3 +30,11 @@ eureka:
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXP}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL}

@@ -51,7 +51,7 @@ public class KafkaOrderReturnedNotificationConsumer {
         ConcurrentKafkaListenerContainerFactory<String, OrderReturnNotificationEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
-
+        factory.getContainerProperties().setObservationEnabled(true);
         ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(3);
         backOff.setInitialInterval(1000L);
         backOff.setMultiplier(2.0);
