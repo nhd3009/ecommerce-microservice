@@ -13,7 +13,7 @@ import com.nhd.order_service.entity.OrderReturn;
 import com.nhd.order_service.enums.OrderStatus;
 import com.nhd.order_service.enums.ReturnStatus;
 import com.nhd.order_service.mapper.OrderReturnMapper;
-import com.nhd.order_service.publisher.OrderReturnApprovedPublisher;
+import com.nhd.order_service.publisher.OrderReturnNotificationPublisher;
 import com.nhd.order_service.repository.OrderItemRepository;
 import com.nhd.order_service.repository.OrderRepository;
 import com.nhd.order_service.repository.OrderReturnRepository;
@@ -36,7 +36,7 @@ public class OrderReturnService {
     private final OrderItemRepository orderItemRepo;
     private final OrderReturnRepository orderReturnRepo;
     private final AuthFeignClient authClient;
-    private final OrderReturnApprovedPublisher orderReturnApprovedPublisher;
+    private final OrderReturnNotificationPublisher orderReturnApprovedPublisher;
     private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
     private static final String ROLE_USER = "ROLE_USER";
@@ -127,13 +127,17 @@ public class OrderReturnService {
         OrderReturn entity = orderReturnRepo.findById(returnId)
                 .orElseThrow(() -> new ResourceNotFoundException("Return not found"));
 
-        if (entity.getStatus() != ReturnStatus.REQUESTED) {
-            throw new BadRequestException("Return not in REQUESTED state");
+        if (entity.getStatus().equals(ReturnStatus.COMPLETED)) {
+            throw new BadRequestException("Return not in REQUESTED state or APPROVED");
         }
 
+        OrderItem item = orderItemRepo.findById(entity.getOrderItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
+                
         entity.setStatus(ReturnStatus.REJECTED);
         entity.setRejectedReason(reason);
         orderReturnRepo.save(entity);
+        orderReturnApprovedPublisher.publish(entity, item);
         return OrderReturnMapper.toDto(entity);
     }
 

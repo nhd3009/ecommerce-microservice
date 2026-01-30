@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderReturnApprovedEvent {
+public class OrderReturnNotificationEvent {
     private Long returnId;
     private Long orderId;
     private Long userId;
@@ -22,6 +22,8 @@ public class OrderReturnApprovedEvent {
     private BigDecimal refundAmount;
     private String refundMethod;
     private String receiver;
+    private String reason;
+    private String rejectedReason;
     private String note;
     private Instant approvedAt;
 }

@@ -1,10 +1,12 @@
 package com.nhd.notification_service.service;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.nhd.commonlib.event.order_notification.OrderNotificationEvent;
-import com.nhd.commonlib.event.order_notification.OrderReturnApprovedEvent;
+import com.nhd.commonlib.event.order_notification.OrderReturnNotificationEvent;
 
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class EmailService {
     private final JavaMailSender mailSender;
     private final Configuration freemarkerConfig;
+    private static final DateTimeFormatter USER_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
 
     public void sendOrderEmail(OrderNotificationEvent event) {
         try {
@@ -53,7 +56,7 @@ public class EmailService {
         }
     }
 
-    public void sendOrderReturnApprovedEmail(OrderReturnApprovedEvent event){
+    public void sendOrderReturnApprovedEmail(OrderReturnNotificationEvent event){
         try {
             Map<String, Object> model = new HashMap<>();
             model.put("orderId", event.getOrderId());
@@ -63,10 +66,14 @@ public class EmailService {
             model.put("refundAmount", event.getRefundAmount());
             model.put("refundMethod", event.getRefundMethod());
             model.put("receiver", event.getReceiver());
+            model.put("reason", event.getReason());
+            model.put("rejectedReason", event.getRejectedReason());
             model.put("note", event.getNote());
-            model.put("approvedAt", event.getApprovedAt());
 
-            Template template = freemarkerConfig.getTemplate("order-return-approved.html");
+            String approvedAtFormatted = USER_TIME_FORMAT.format(event.getApprovedAt());
+            model.put("approvedAt", approvedAtFormatted);
+
+            Template template = freemarkerConfig.getTemplate("order-return.html");
             String htmlBody = FreeMarkerTemplateUtils.processTemplateIntoString(template, model);
 
             MimeMessage message = mailSender.createMimeMessage();
@@ -74,7 +81,7 @@ public class EmailService {
 
             helper.setFrom("no-reply@frieren.com", "Frieren E-commerce Team");
             helper.setTo(event.getEmail());
-            helper.setSubject("Your return request has been approved – Order #" + event.getOrderId());
+            helper.setSubject(event.getRejectedReason() != null ? "Your return request has been rejected Order #" + event.getOrderId() : "Your return request has been approved Order #" + event.getOrderId());
             helper.setText(htmlBody, true);
 
             mailSender.send(message);

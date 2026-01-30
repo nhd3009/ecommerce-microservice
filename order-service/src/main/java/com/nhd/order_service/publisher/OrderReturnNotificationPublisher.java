@@ -5,7 +5,7 @@ import java.time.Instant;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import com.nhd.commonlib.event.order_notification.OrderReturnApprovedEvent;
+import com.nhd.commonlib.event.order_notification.OrderReturnNotificationEvent;
 import com.nhd.order_service.entity.OrderItem;
 import com.nhd.order_service.entity.OrderReturn;
 
@@ -15,13 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderReturnApprovedPublisher {
+public class OrderReturnNotificationPublisher {
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private static final String TOPIC_ORDER_RETURN_APPROVED = "order.returned.approved";
+    private static final String TOPIC_ORDER_RETURN_APPROVED = "order.returned.notification";
 
     public void publish(OrderReturn orderReturn, OrderItem orderItem) {
 
-        OrderReturnApprovedEvent event = OrderReturnApprovedEvent.builder()
+        OrderReturnNotificationEvent event = OrderReturnNotificationEvent.builder()
                 .returnId(orderReturn.getId())
                 .orderId(orderReturn.getOrderId())
                 .userId(orderReturn.getUserId())
@@ -32,6 +32,8 @@ public class OrderReturnApprovedPublisher {
                 .refundMethod(orderReturn.getRefundInfo().getMethod().toString())
                 .receiver(orderReturn.getRefundInfo().getReceiver().toString())
                 .note(orderReturn.getRefundInfo().getNote().toString())
+                .reason(orderReturn.getReturnedReason())
+                .rejectedReason(orderReturn.getRejectedReason())
                 .approvedAt(Instant.now())
                 .build();
 

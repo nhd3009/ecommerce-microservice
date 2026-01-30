@@ -19,13 +19,13 @@ import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
-import com.nhd.commonlib.event.order_notification.OrderReturnApprovedEvent;
+import com.nhd.commonlib.event.order_notification.OrderReturnNotificationEvent;
 
 @Configuration
 @EnableKafka
 public class KafkaOrderReturnedNotificationConsumer {
     @Bean
-    public ConsumerFactory<String, OrderReturnApprovedEvent> orderReturnApprovedConsumerFactory() {
+    public ConsumerFactory<String, OrderReturnNotificationEvent> orderReturnApprovedConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service-group");
@@ -37,18 +37,18 @@ public class KafkaOrderReturnedNotificationConsumer {
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.nhd.commonlib.event.order_notification.OrderReturnApprovedEvent");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.nhd.commonlib.event.order_notification.OrderReturnNotificationEvent");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, OrderReturnApprovedEvent> orderReturnApprovedKafkaListenerContainerFactory(
-            @Qualifier("orderReturnApprovedConsumerFactory") ConsumerFactory<String, OrderReturnApprovedEvent> consumerFactory,
+    public ConcurrentKafkaListenerContainerFactory<String, OrderReturnNotificationEvent> orderReturnApprovedKafkaListenerContainerFactory(
+            @Qualifier("orderReturnApprovedConsumerFactory") ConsumerFactory<String, OrderReturnNotificationEvent> consumerFactory,
             KafkaTemplate<String, Object> kafkaTemplate) {
 
-        ConcurrentKafkaListenerContainerFactory<String, OrderReturnApprovedEvent> factory =
+        ConcurrentKafkaListenerContainerFactory<String, OrderReturnNotificationEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
 
