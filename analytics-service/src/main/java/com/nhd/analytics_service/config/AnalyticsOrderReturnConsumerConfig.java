@@ -1,6 +1,8 @@
 package com.nhd.analytics_service.config;
 
-import com.nhd.commonlib.event.order_analytics.OrderCompletedEvent;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,16 +18,15 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.util.backoff.ExponentialBackOff;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.nhd.commonlib.event.order_analytics.OrderReturnAnalyticsEvent;
 
 @Configuration
 @EnableKafka
-public class AnalyticsKafkaConsumerConfig {
-
+public class AnalyticsOrderReturnConsumerConfig {
     @Bean
-    public ConsumerFactory<String, OrderCompletedEvent> analyticsConsumerFactory() {
+    public ConsumerFactory<String, OrderReturnAnalyticsEvent> analyticsOrderReturnConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
 
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
@@ -37,40 +38,34 @@ public class AnalyticsKafkaConsumerConfig {
         props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 
-        props.put(JsonDeserializer.TRUSTED_PACKAGES,
-                "*");
-
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE,
-                "com.nhd.commonlib.event.order_analytics.OrderCompletedEvent");
-
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.nhd.commonlib.event.order_analytics.OrderReturnAnalyticsEvent");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, OrderCompletedEvent>
-    analyticsKafkaListenerContainerFactory(
-            @Qualifier("analyticsConsumerFactory") ConsumerFactory<String, OrderCompletedEvent> analyticsConsumerFactory,
+    public ConcurrentKafkaListenerContainerFactory<String, OrderReturnAnalyticsEvent>
+        analyticsOrderReturnListenerContainerFactory(
+            @Qualifier("analyticsOrderReturnConsumerFactory") ConsumerFactory<String, OrderReturnAnalyticsEvent> consumerFactory,
             KafkaTemplate<String, Object> kafkaTemplate
     ) {
 
-        ConcurrentKafkaListenerContainerFactory<String, OrderCompletedEvent> factory =
+        ConcurrentKafkaListenerContainerFactory<String, OrderReturnAnalyticsEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
-        factory.setConsumerFactory(analyticsConsumerFactory);
+        factory.setConsumerFactory(consumerFactory);
 
-        ExponentialBackOffWithMaxRetries backOff =
-                new ExponentialBackOffWithMaxRetries(3);
+        ExponentialBackOff backOff = new ExponentialBackOff();
         backOff.setInitialInterval(1000L);
         backOff.setMultiplier(2.0);
         backOff.setMaxInterval(10000L);
 
-        DeadLetterPublishingRecoverer recoverer =
-                new DeadLetterPublishingRecoverer(kafkaTemplate);
-
-        DefaultErrorHandler errorHandler =
-                new DefaultErrorHandler(recoverer, backOff);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(
+                new DeadLetterPublishingRecoverer(kafkaTemplate), 
+                backOff
+        );
 
         factory.setCommonErrorHandler(errorHandler);
 

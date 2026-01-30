@@ -1,6 +1,6 @@
 package com.nhd.order_service.publisher;
 
-import com.nhd.commonlib.event.order_analytics.OrderReturnCompletedEvent;
+import com.nhd.commonlib.event.order_analytics.OrderReturnAnalyticsEvent;
 import com.nhd.order_service.entity.OrderItem;
 import com.nhd.order_service.entity.OrderReturn;
 import lombok.RequiredArgsConstructor;
@@ -14,14 +14,14 @@ import java.time.ZoneId;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OrderReturnCompletedPublisher {
+public class OrderReturnAnalyticsPublisher {
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private static final String TOPIC_ORDER_RETURNED = "order.returned.complete";
+    private static final String TOPIC_ORDER_RETURNED = "order.returned.analytics";
 
-    private void publishEvents(OrderReturn entity, OrderItem item) {
+    public void publishEvents(OrderReturn entity, OrderItem item) {
 
-        OrderReturnCompletedEvent analyticsEvent =
-                OrderReturnCompletedEvent.builder()
+        OrderReturnAnalyticsEvent analyticsEvent =
+                OrderReturnAnalyticsEvent.builder()
                         .returnId(entity.getId())
                         .orderId(entity.getOrderId())
                         .orderItemId(entity.getOrderItemId())

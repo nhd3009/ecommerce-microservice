@@ -19,6 +19,10 @@ public class DailyRevenueDto {
     private BigDecimal netProfit;
     private BigDecimal totalExpense;
 
+
+    private Long totalItemReturned;
+    private BigDecimal totalRefundAmount;
+
     private Long totalOrders;
     private Long totalItemsSold;
 }

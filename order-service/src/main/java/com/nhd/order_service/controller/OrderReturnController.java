@@ -66,4 +66,16 @@ public class OrderReturnController {
         ApiResponse<OrderReturnDto> response = new ApiResponse<>(HttpStatus.CREATED.value(), "The order return has been rejected", dto);
         return ResponseEntity.status(HttpStatus.OK.value()).body(response);
     }
+
+    @PutMapping("/admin/{id}/complete")
+    public ResponseEntity<ApiResponse<OrderReturnDto>> completeOrderReturn(
+        @PathVariable Long id,
+        @RequestHeader(value = "Authorization", required = false) String bearerToken,
+        @CookieValue(value = "accessToken", required = false) String accessToken
+    ) {
+        String token = orderService.getToken(bearerToken, accessToken);
+        OrderReturnDto dto = orderReturnService.completeReturn(id, token);
+        ApiResponse<OrderReturnDto> response = new ApiResponse<>(HttpStatus.CREATED.value(), "The order return has been completed", dto);
+        return ResponseEntity.status(HttpStatus.OK.value()).body(response);
+    }
 }

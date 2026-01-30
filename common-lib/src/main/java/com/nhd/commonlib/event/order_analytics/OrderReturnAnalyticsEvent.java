@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderReturnCompletedEvent {
+public class OrderReturnAnalyticsEvent {
     private Long returnId;
     private Long orderId;
     private Long orderItemId;
