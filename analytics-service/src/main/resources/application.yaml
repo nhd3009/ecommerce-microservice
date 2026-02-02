@@ -32,3 +32,6 @@ management:
   zipkin:
     tracing:
       endpoint: ${ZIPKIN_URL}
+
+
+kafka_server: ${KAFKA_BOOTSTRAP_SERVER}
