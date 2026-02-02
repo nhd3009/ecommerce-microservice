@@ -162,3 +162,48 @@ ecommerce-microservice/
 - PUT /api/v1/orders/{id}/status
 
 ### Analytics Service
+- Analytics
+  - GET /api/v1/analytics/revenue/daily
+  - GET /api/v1/analytics/dashboard
+  - GET /api/v1/analytics/top-products
+- Expense
+  - POST /api/v1/expenses
+  - GET /api/v1/expenses
+  - PUT /api/v1/expenses/{id}
+  - DELETE /api/v1/expenses/{id}
+
+> Note: You can import this via Insomnia
+> [Insomnia_2026-01-30.har](../../Documents/Insomnia_2026-01-30.har)
+
+## Environment variable
+```
+PRODUCT_DB_URL=your_product_db_url (mysql)
+PRODUCT_DB_USERNAME=your_product_db_username
+PRODUCT_DB_PASSWORD=your_product_db_password
+
+AUTH_DB_URL=your_auth_db_url (mysql)
+AUTH_DB_USERNAME=your_auth_db_username
+AUTH_DB_PASSWORD=your_auth_db_password
+
+ORDER_DB_URL=your_order_db_url (mysql)
+ORDER_DB_USERNAME=your_order_db_username
+ORDER_DB_PASSWORD=your_order_db_password
+
+ANALYTICS_DB_URL=your_analytics_db_url (mysql)
+ANALYTICS_DB_USERNAME=your_analytics_db_username
+ANALYTICS_DB_PASSWORD=your_analytics_db_password
+
+MAIL_HOST=your_mail_host
+MAIL_USERNAME=your_mail_user_name
+MAIL_PASSWORD=your_mail_password
+MAIL_PORT=your_mail_port
+
+ZIPKIN_URL= YOUR_ZIPKIN_URL(Default http://localhost:9411/api/v2/spans)
+
+DEFAULT_EUREKA_URL=YOUR_EUREKA_URL(Default http://localhost:8761/eureka)
+
+JWT_SECRET=your_jwt_secret
+JWT_EXP=your_jwt_expire(6000000)
+```
+
+> Note: For mail service you can use Mailtrap and create a sandbox to use
