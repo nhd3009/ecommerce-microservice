@@ -2,7 +2,6 @@ package com.nhd.product_service.controller;
 
 import com.nhd.commonlib.dto.ProductDto;
 import com.nhd.commonlib.dto.ProductOrderView;
-import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.commonlib.response.PageResponse;
 import org.springframework.http.HttpStatus;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.nhd.product_service.request.ProductRequest;
+import com.nhd.product_service.dto.AdminProductDto;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.service.FileStorageService;
 import com.nhd.product_service.service.ProductService;
@@ -124,6 +124,32 @@ public class ProductController {
         ProductOrderView result = productService.getProductForOrder(id);
         ApiResponse<ProductOrderView> response = new ApiResponse<>(HttpStatus.OK.value(), "Internal Product Retrieved Successfully!", result);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/internal")
+    public ResponseEntity<ApiResponse<PageResponse<AdminProductDto>>> getAllInternalProduct(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        PageResponse<AdminProductDto> response = productService.getAllAdminProducts(page, size);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All products retrieved successfully!", response));
+    }
+
+    @GetMapping("/internal/filter")
+    public ResponseEntity<ApiResponse<PageResponse<AdminProductDto>>> filterAdminProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        ProductFilterRequest filterRequest = ProductFilterRequest.builder()
+                .name(name)
+                .categoryId(categoryId)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .build();
+        PageResponse<AdminProductDto> response = productService.getAllAdminProductByFilter(filterRequest, page, size);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Products has been retrieved successfully with filters", response));
     }
 
     private void handleImage(@RequestPart("productInfo") ProductRequest request, @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail, @RequestPart(value = "images", required = false) List<MultipartFile> images) {

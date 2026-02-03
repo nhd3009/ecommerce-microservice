@@ -10,6 +10,7 @@ import com.nhd.commonlib.dto.enums.ProductStatus;
 import com.nhd.commonlib.exception.BadRequestException;
 import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.response.PageResponse;
+import com.nhd.product_service.dto.AdminProductDto;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
@@ -70,6 +71,44 @@ public class ProductService {
 
         Page<Product> products = productRepository.findAll(spec, pageable);
         return getProductPageResponse(products);
+    }
+
+    public PageResponse<AdminProductDto> getAllAdminProductByFilter(ProductFilterRequest filterRequest, int page,
+            int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Specification<Product> spec = ProductSpecification.filter(filterRequest);
+
+        Page<Product> products = productRepository.findAll(spec, pageable);
+
+        List<AdminProductDto> productDtos = products.getContent().stream()
+                .map(ProductMapper::toAdminDto)
+                .collect(Collectors.toList());
+
+        return PageResponse.<AdminProductDto>builder()
+                .data(productDtos)
+                .totalElements(products.getTotalElements())
+                .totalPages(products.getTotalPages())
+                .currentPage(products.getNumber())
+                .pageSize(products.getSize())
+                .build();
+    }
+
+    @Cacheable(value = "product_admin_pages", key = "'page_'+#page+'_size_'+#size")
+    public PageResponse<AdminProductDto> getAllAdminProducts(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Product> products = productRepository.findAll(pageable);
+        List<AdminProductDto> productDtos = products.getContent().stream()
+                .map(ProductMapper::toAdminDto)
+                .collect(Collectors.toList());
+
+        return PageResponse.<AdminProductDto>builder()
+                .data(productDtos)
+                .totalElements(products.getTotalElements())
+                .totalPages(products.getTotalPages())
+                .currentPage(products.getNumber())
+                .pageSize(products.getSize())
+                .build();
     }
 
     @Caching(evict = {
