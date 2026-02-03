@@ -84,6 +84,7 @@ public class ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
+                .importPrice(request.getImportPrice())
                 .stockQuantity(request.getStockQuantity())
                 .thumbnailUrl(request.getThumbnailUrl())
                 .category(category)
@@ -126,6 +127,8 @@ public class ProductService {
             product.setDescription(request.getDescription());
         if (request.getPrice() != null)
             product.setPrice(request.getPrice());
+        if (request.getImportPrice() != null)
+            product.setImportPrice(request.getImportPrice());
         if (request.getStockQuantity() != null)
             product.setStockQuantity(request.getStockQuantity());
         if (request.getThumbnailUrl() != null)

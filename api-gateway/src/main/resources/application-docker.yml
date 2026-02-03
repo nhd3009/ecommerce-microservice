@@ -1,0 +1,158 @@
+spring:
+  application:
+    name: api-gateway
+
+  ##GATEWAY CONFIGURATIONS
+  cloud:
+    gateway:
+      routes:
+        ## AUTH SERVICE
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/v1/auth/**
+
+        ## ---------- PRODUCT SERVICE ----------
+        ## Internal Product for Order
+        - id: product-service-internal
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/internal/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+        ## Public READ APIs
+        - id: product-service-read
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**
+            - Method=GET
+
+        ## WRITE (POST, PUT)
+        - id: product-service-write
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**
+            - Method=POST,PUT,OPTIONS
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+
+        ## DELETE (for ADMIN only)
+        - id: product-service-delete
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/categories/**
+            - Method=DELETE
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN
+
+        ## ------------- ORDER SERVER -----------------
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: AuthenticationFilter
+
+        - id: order-service-admin
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/admin
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+
+        - id: order-return-user
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/order-return/user/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_USER
+        
+        - id: order-return-admin
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/order-return/admin/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_EMPLOYEE,ROLE_ADMIN
+
+        ## ---------- ANALYTICS SERVICE ----------
+        - id: analytics-service-read
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/v1/analytics/**
+            - Method=GET
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+        - id: expense-service
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/v1/expenses/**
+            - Method=GET,POST,PUT
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN,ROLE_EMPLOYEE
+        - id: expense-service-delete
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/v1/expenses/**
+            - Method=DELETE
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN
+        - id: analytics-service-write
+          uri: lb://ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/v1/analytics/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: AuthenticationFilter
+            - name: RoleFilter
+              args:
+                requiredRoles: ROLE_ADMIN
+
+
+
+
+server:
+  port: 8082
+
+jwt:
+  secret: ${JWT_SECRET}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${DEFAULT_EUREKA_URL}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL}

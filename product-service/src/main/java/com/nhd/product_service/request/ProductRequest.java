@@ -18,6 +18,7 @@ public class ProductRequest {
     private String name;
     private String description;
     private BigDecimal price;
+    private BigDecimal importPrice;
     private Integer stockQuantity;
     private Long categoryId;
     private ProductStatus status;

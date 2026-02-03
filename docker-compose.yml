@@ -1,0 +1,211 @@
+networks:
+  microservice-network:
+    driver: bridge
+
+volumes:
+  mysql-auth-data:
+  mysql-product-data:
+  mysql-order-data:
+  mysql-analytics-data:
+  redis-data:
+
+services:
+
+  # =========================
+  # INFRA
+  # =========================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - microservice-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.1
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - microservice-network
+
+  redis:
+    image: redis:7.0
+    volumes:
+      - redis-data:/data
+    networks:
+      - microservice-network
+
+  # =========================
+  # DATABASES
+  # =========================
+
+  mysql-auth:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth_db
+    volumes:
+      - mysql-auth-data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  mysql-product:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: product_db
+    volumes:
+      - mysql-product-data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  mysql-order:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: order_db
+    volumes:
+      - mysql-order-data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  mysql-analytics:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: analytics_db
+    volumes:
+      - mysql-analytics-data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  # =========================
+  # CORE SERVICES
+  # =========================
+
+  auth-service:
+    env_file:
+      - docker.env
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    image: auth-service:latest
+    depends_on:
+      - mysql-auth
+      - kafka
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+
+  api-gateway:
+    env_file:
+      - docker.env
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: api-gateway:latest
+    depends_on:
+      - kafka
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+  # =========================
+  # BUSINESS SERVICES
+  # =========================
+
+  product-service:
+    env_file:
+      - docker.env
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    image: product-service:latest
+    depends_on:
+      - mysql-product
+      - kafka
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+  order-service:
+    env_file:
+      - docker.env
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    image: order-service:latest
+    depends_on:
+      - mysql-order
+      - kafka
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+  analytics-service:
+    env_file:
+      - docker.env
+    build:  
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    image: analytics-service:latest
+    depends_on:
+      - mysql-analytics
+      - kafka
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+  notification-service:
+    env_file:
+      - docker.env
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    image: notification-service:latest
+    depends_on:
+      - kafka
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
+
+  service-registry:
+    env_file:
+      - docker.env
+    build:
+      context: ./service-registry
+      dockerfile: Dockerfile
+    image: service-registry:latest
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - microservice-network
