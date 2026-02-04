@@ -111,7 +111,6 @@ ecommerce-microservice/
 > - Zipkin: [Zipkin](https://zipkin.io/pages/quickstart.html)
 > - Java: [Java](https://www.oracle.com/java/technologies/downloads/)
 > - MySQL: [MySQL](https://dev.mysql.com/downloads/installer/)
-> #### Install via docker: Implement later
 
 ## Port
 - Api Gateway: 8082
@@ -172,10 +171,10 @@ ecommerce-microservice/
   - PUT /api/v1/expenses/{id}
   - DELETE /api/v1/expenses/{id}
 
-> Note: You can import this via Insomnia
-> [Insomnia_2026-01-30.har](../../Documents/Insomnia_2026-01-30.har)
+> Note: You can import this via Insomnia [Insomnia_2026-01-30.har](Insomnia_2026-01-30.har)
 
 ## Environment variable
+For local environment, create a `.env` file in the root directory and add the following environment variables:
 ```
 PRODUCT_DB_URL=your_product_db_url (mysql)
 PRODUCT_DB_USERNAME=your_product_db_username
@@ -206,4 +205,112 @@ JWT_SECRET=your_jwt_secret
 JWT_EXP=your_jwt_expire(6000000)
 ```
 
-> Note: For mail service you can use Mailtrap and create a sandbox to use
+For Docker environment, create a `docker.env` file in the root directory and add the following environment variables:
+```
+PRODUCT_DB_URL=jdbc:mysql://mysql-product:3306/product_db
+PRODUCT_DB_USERNAME=root
+PRODUCT_DB_PASSWORD=root
+
+AUTH_DB_URL=jdbc:mysql://mysql-auth:3306/auth_db
+AUTH_DB_USERNAME=root
+AUTH_DB_PASSWORD=root
+
+ORDER_DB_URL=jdbc:mysql://mysql-order:3306/order_db
+ORDER_DB_USERNAME=root
+ORDER_DB_PASSWORD=root
+
+ANALYTICS_DB_URL=jdbc:mysql://mysql-analytics:3306/analytics_db
+ANALYTICS_DB_USERNAME=root
+ANALYTICS_DB_PASSWORD=root
+
+MAIL_HOST=your_mail_host
+MAIL_PORT=your_mail_port
+MAIL_USERNAME=your_mail_user_name
+MAIL_PASSWORD=your_mail_password
+
+KAFKA_BOOTSTRAP_SERVER=kafka:9092
+DEFAULT_EUREKA_URL=http://service-registry:8761/eureka
+ZIPKIN_URL=http://zipkin:9411/api/v2/spans
+
+JWT_SECRET=VNEqE5Yp+VzqS+kqzqjW+EbLpRm6cC7jmgc+YhoYxD8=
+JWT_EXP=6000000
+```
+
+## Running the project
+### Local setup
+1. Clone the repository
+    ```bash
+    git clone https://github.com/nhd3009/ecommerce-microservice.git
+    ```
+2. Set up the environment variables. 
+    - Create a file named `.env` in the root directory and add the environment variables mentioned above.
+3. Install the requirements above and start the services (Kafka, MySQL, Redis, Zipkin)
+4. Create the databases in MySQL:
+    ```sql
+    CREATE DATABASE auth_db;
+    CREATE DATABASE product_db;
+    CREATE DATABASE order_db;
+    CREATE DATABASE analytics_db;
+    ```
+5. Start each microservice from the root directory
+6. Access the API Gateway at `http://localhost:8082` and using Postman or Insomnia to test the APIs. Import file [Insomnia_2026-01-30.har](Insomnia_2026-01-30.har)
+7. For login use the following default account:
+    ```json
+    {
+      "username": "admin",
+      "password": "admin"
+    }
+    ```
+    ```json
+    {
+      "username": "employee",
+      "password": "employee"
+    }
+    ```
+    ```json
+    {
+      "username": "customer",
+      "password": "customer"
+    }
+    ```
+8. Access the Eureka Server at `http://localhost:8761`
+9. Access Zipkin at `http://localhost:9411`
+10. Enjoy!
+
+### Docker setup
+1. Clone the repository
+    ```bash
+    git clone https://github.com/nhd3009/ecommerce-microservice.git
+    ```
+2. Set up the environment variables
+Create a file named `docker.env` in the root directory and add the environment variables mentioned above.
+3. Install Docker and Docker Compose
+4. From the root directory, build and start the Docker containers (Please make sure Kafka, Zookeeper, MySQL, Redis, Zipkin images are started first)
+    ```bash
+    mvn clean install -DskipTests
+    docker compose build --no-cache
+    docker compose up -d
+    ```
+5. Access the API Gateway at `http://localhost:8082` and using Postman or Insomnia to test the APIs. Import file [Insomnia_2026-01-30.har](Insomnia_2026-01-30.har)
+6. For login use the following default account:
+    ```json
+    {
+      "username": "admin",
+      "password": "admin"
+    }
+    ```
+    ```json
+    {
+      "username": "employee",
+      "password": "employee"
+    }
+    ```
+    ```json
+    {
+      "username": "customer",
+      "password": "customer"
+    }
+    ```
+7. Access the Eureka Server at `http://localhost:8761`
+8. Access Zipkin at `http://localhost:9411`
+9. Enjoy!
