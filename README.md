@@ -201,8 +201,8 @@ ZIPKIN_URL= YOUR_ZIPKIN_URL(Default http://localhost:9411/api/v2/spans)
 
 DEFAULT_EUREKA_URL=YOUR_EUREKA_URL(Default http://localhost:8761/eureka)
 
-JWT_SECRET=your_jwt_secret
-JWT_EXP=your_jwt_expire(6000000)
+JWT_SECRET=your_jwt_secret(Example: VNEqE5Yp+VzqS+kqzqjW+EbLpRm6cC7jmgc+YhoYxD8=)
+JWT_EXP=your_jwt_expire(Example: 600000)
 ```
 
 For Docker environment, create a `docker.env` file in the root directory and add the following environment variables:
@@ -232,8 +232,8 @@ KAFKA_BOOTSTRAP_SERVER=kafka:9092
 DEFAULT_EUREKA_URL=http://service-registry:8761/eureka
 ZIPKIN_URL=http://zipkin:9411/api/v2/spans
 
-JWT_SECRET=VNEqE5Yp+VzqS+kqzqjW+EbLpRm6cC7jmgc+YhoYxD8=
-JWT_EXP=6000000
+JWT_SECRET=your_jwt_secret(Example: VNEqE5Yp+VzqS+kqzqjW+EbLpRm6cC7jmgc+YhoYxD8=)
+JWT_EXP=your_jwt_expire(Example: 600000)
 ```
 
 ## Running the project
@@ -285,7 +285,7 @@ JWT_EXP=6000000
 2. Set up the environment variables
 Create a file named `docker.env` in the root directory and add the environment variables mentioned above.
 3. Install Docker and Docker Compose
-4. From the root directory, build and start the Docker containers (Please make sure Kafka, Zookeeper, MySQL, Redis, Zipkin images are started first)
+4. From the root directory, open terminal build and start the Docker containers (Please make sure Kafka, Zookeeper, MySQL, Redis, Zipkin images are started first)
     ```bash
     mvn clean install -DskipTests
     docker compose build --no-cache
