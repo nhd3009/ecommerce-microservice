@@ -93,7 +93,7 @@ A production-oriented E-Commerce Backend System built with Spring Boot Microserv
 
 > ### Notes:
 > To keep my system lightweight and easy to debug, all infrastructure components are installed locally on my laptop (Non-Docker).
-> If you want to set up this project on your machine, please install and start the following services:
+> If you want to set up this project on your machine, please install and start the following services. If you dont, please Running project with docker below:
 > - Apache Kafka: [Apache Kafka](https://kafka.apache.org/community/downloads/)
 > - Redis: [Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/)
 > - Zipkin: [Zipkin](https://zipkin.io/pages/quickstart.html)
