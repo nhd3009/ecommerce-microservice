@@ -64,7 +64,7 @@ public class CategoryService {
     return CategoryMapper.toDto(category);
   }
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @Transactional
   @Caching(
     put = @CachePut(value = "category", key = "#id"),
     evict = {
@@ -115,7 +115,7 @@ public class CategoryService {
     @CacheEvict(value = "category", key = "#id"),
     @CacheEvict(value = "categories", key = "'all'")
   })
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @Transactional
   public String deleteCategory(Long id) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));

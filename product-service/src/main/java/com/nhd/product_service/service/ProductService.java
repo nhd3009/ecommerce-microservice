@@ -146,7 +146,7 @@ public class ProductService {
         return ProductMapper.toDto(savedProduct);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
     @Caching(
         put = @CachePut(value = "product", key = "#id"),
         evict = {
@@ -207,7 +207,7 @@ public class ProductService {
         return ProductMapper.toDto(updatedProduct);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
     @Caching(
         put = @CachePut(value = "product", key = "#id"),
         evict = {
@@ -255,7 +255,7 @@ public class ProductService {
         @CacheEvict(value = "product_pages", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true)
     })
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
     public String deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
