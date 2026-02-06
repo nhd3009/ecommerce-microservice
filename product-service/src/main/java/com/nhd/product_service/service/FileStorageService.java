@@ -21,12 +21,11 @@ public class FileStorageService {
 
     public String saveFile(MultipartFile file) {
         try {
-            if (!Files.exists(root)) {
-                Files.createDirectories(root);
-            }
+            Files.createDirectories(root);
 
             String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
             Path filePath = root.resolve(filename);
+
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             return "/uploads/" + filename;
@@ -43,15 +42,19 @@ public class FileStorageService {
     }
 
     public void deleteFile(String fileUrl) {
-        if (fileUrl == null || fileUrl.isEmpty())
-            return;
+        if (fileUrl == null || fileUrl.isBlank()) return;
 
         try {
-            String filename = fileUrl.replace("/uploads/", "");
-            Path path = Paths.get("uploads").resolve(filename);
+            String filename = Paths.get(fileUrl).getFileName().toString();
+            Path path = root.resolve(filename);
             Files.deleteIfExists(path);
         } catch (IOException e) {
-            log.warn("Failed to delete file: " + fileUrl, e);
+            log.warn("Failed to delete file {}", fileUrl, e);
         }
+    }
+
+    public void deleteFiles(List<String> fileUrls) {
+        if (fileUrls == null || fileUrls.isEmpty()) return;
+        fileUrls.forEach(this::deleteFile);
     }
 }

@@ -45,7 +45,12 @@ spring:
           predicates:
             - Path=/api/v1/products/**,/api/v1/categories/**
             - Method=GET
-
+        - id: product-service-uploads
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/uploads/**
+          filters:
+            - StripPrefix=0
         ## WRITE (POST, PUT)
         - id: product-service-write
           uri: lb://PRODUCT-SERVICE

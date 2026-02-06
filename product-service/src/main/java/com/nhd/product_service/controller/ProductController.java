@@ -20,6 +20,7 @@ import com.nhd.product_service.service.ProductService;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -90,9 +91,24 @@ public class ProductController {
             @RequestPart("productInfo") ProductRequest productRequest,
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        handleImage(productRequest, thumbnail, images);
-        ProductDto response = productService.createProduct(productRequest);
-        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product has been created successfully!", response));
+        List<String> uploadedFiles = new ArrayList<>();
+
+        try {
+            handleImage(productRequest, thumbnail, images, uploadedFiles);
+
+            ProductDto response = productService.createProduct(productRequest);
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(HttpStatus.OK.value(),
+                            "A product has been created successfully!",
+                            response)
+            );
+
+        } catch (Exception ex) {
+            fileStorageService.deleteFiles(uploadedFiles);
+            throw ex;
+        }
+
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -101,10 +117,23 @@ public class ProductController {
             @RequestPart("productInfo") ProductRequest request,
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        handleImage(request, thumbnail, images);
-        ProductDto response = productService.updateProduct(id, request);
-        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A Product has been updated successfully!", response));
+        List<String> uploadedFiles = new ArrayList<>();
 
+        try {
+            handleImage(request, thumbnail, images, uploadedFiles);
+
+            ProductDto response = productService.updateProduct(id, request);
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(HttpStatus.OK.value(),
+                            "A product has been updated successfully!",
+                            response)
+            );
+
+        } catch (Exception ex) {
+            fileStorageService.deleteFiles(uploadedFiles);
+            throw ex;
+        }
     }
 
     @PutMapping("/{id}/toggle-status")
@@ -152,14 +181,17 @@ public class ProductController {
         return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Products has been retrieved successfully with filters", response));
     }
 
-    private void handleImage(@RequestPart("productInfo") ProductRequest request, @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail, @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+
+    private void handleImage(@RequestPart("productInfo") ProductRequest request, @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail, @RequestPart(value = "images", required = false) List<MultipartFile> images, List<String> uploadedFiles) {
         if (thumbnail != null && !thumbnail.isEmpty()) {
             String thumbnailUrl = fileStorageService.saveFile(thumbnail);
+            uploadedFiles.add(thumbnailUrl);
             request.setThumbnailUrl(thumbnailUrl);
         }
 
         if (images != null && !images.isEmpty()) {
             List<String> imageUrls = fileStorageService.saveListFiles(images);
+            uploadedFiles.addAll(imageUrls);
             request.setImageUrls(imageUrls);
         }
     }
