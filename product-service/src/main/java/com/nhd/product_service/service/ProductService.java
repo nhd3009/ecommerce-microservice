@@ -34,6 +34,8 @@ import com.nhd.product_service.request.ProductRequest;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.specification.ProductSpecification;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -144,7 +146,7 @@ public class ProductService {
         return ProductMapper.toDto(savedProduct);
     }
 
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Caching(
         put = @CachePut(value = "product", key = "#id"),
         evict = {
@@ -205,7 +207,7 @@ public class ProductService {
         return ProductMapper.toDto(updatedProduct);
     }
 
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Caching(
         put = @CachePut(value = "product", key = "#id"),
         evict = {
@@ -253,7 +255,7 @@ public class ProductService {
         @CacheEvict(value = "product_pages", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true)
     })
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public String deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));

@@ -19,11 +19,14 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -61,11 +64,12 @@ public class CategoryService {
     return CategoryMapper.toDto(category);
   }
 
-  @Caching(evict = {
-    @CacheEvict(value = "category", key = "#id"),
-    @CacheEvict(value = "categories", key = "'all'")
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @Caching(
+    put = @CachePut(value = "category", key = "#id"),
+    evict = {
+      @CacheEvict(value = "categories", key = "'all'")
   })
-  @Transactional
   public CategoryDto updateCategory(Long id, UpdateCategoryRequest request) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
@@ -84,10 +88,6 @@ public class CategoryService {
     return CategoryMapper.toDto(updated);
   }
 
-  @Caching(evict = {
-    @CacheEvict(value = "category", key = "#id"),
-    @CacheEvict(value = "categories", key = "'all'")
-  })
   @Transactional
   public CategoryDto updateCategoryStatus(Long id) {
     Category category = categoryRepository.findById(id)
@@ -115,7 +115,7 @@ public class CategoryService {
     @CacheEvict(value = "category", key = "#id"),
     @CacheEvict(value = "categories", key = "'all'")
   })
-  @Transactional
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public String deleteCategory(Long id) {
     Category category = categoryRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
