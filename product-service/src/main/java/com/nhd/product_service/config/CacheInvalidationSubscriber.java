@@ -47,6 +47,7 @@ public class CacheInvalidationSubscriber implements MessageListener {
                 clearCacheIfExists("products_by_category");
                 clearCacheIfExists("product");
                 clearCacheIfExists("product_pages");
+                clearCacheIfExists("homepage_category_products");
                 log.info("Cleared product caches due to category event: {}", event.getType());
             }
             default -> log.warn("Unknown category event type: {}", event.getType());

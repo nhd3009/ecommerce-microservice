@@ -1,6 +1,5 @@
 package com.nhd.product_service.controller;
 
-import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.response.ApiResponse;
 import com.nhd.product_service.dto.CategoryDto;
 import lombok.RequiredArgsConstructor;

@@ -11,6 +11,9 @@ import com.nhd.commonlib.exception.BadRequestException;
 import com.nhd.commonlib.exception.ResourceNotFoundException;
 import com.nhd.commonlib.response.PageResponse;
 import com.nhd.product_service.dto.AdminProductDto;
+import com.nhd.product_service.dto.CategoryDto;
+import com.nhd.product_service.dto.CategoryProductDto;
+
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,6 +30,8 @@ import org.springframework.stereotype.Service;
 import com.nhd.product_service.entity.Category;
 import com.nhd.product_service.entity.Product;
 import com.nhd.product_service.entity.ProductImage;
+import com.nhd.product_service.enums.CategoryStatus;
+import com.nhd.product_service.mapper.CategoryMapper;
 import com.nhd.product_service.mapper.ProductMapper;
 import com.nhd.product_service.repository.CategoryRepository;
 import com.nhd.product_service.repository.ProductRepository;
@@ -34,8 +39,6 @@ import com.nhd.product_service.request.ProductRequest;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.specification.ProductSpecification;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +61,40 @@ public class ProductService {
         return products.getContent().stream()
                 .map(ProductMapper::toDto)
                 .toList();
+    }
+    
+    @Cacheable(value = "homepage_category_products")
+    public List<CategoryProductDto> getCategoryProductDtos() {
+
+        List<Category> categories = categoryRepository.findByStatus(CategoryStatus.ACTIVE);
+
+        PageRequest pageRequest = PageRequest.of(
+                0,
+                8,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        return categories.stream().map(category -> {
+
+            Page<Product> productPage =
+                    productRepository.findByCategoryIdAndStatus(
+                            category.getId(),
+                            ProductStatus.ACTIVE,
+                            pageRequest
+                    );
+
+            List<ProductDto> products = productPage.getContent()
+                    .stream()
+                    .map(ProductMapper::toDto)
+                    .toList();
+
+            return CategoryProductDto.builder()
+                    .categoryId(category.getId())
+                    .categoryName(category.getName())
+                    .products(products)
+                    .build();
+
+        }).toList();
     }
 
     public PageResponse<ProductDto> getAllProducts(int page, int size) {
@@ -132,6 +169,7 @@ public class ProductService {
 
     @Caching(evict = {
         @CacheEvict(value = "product_pages", allEntries = true),
+        @CacheEvict(value = "homepage_category_products", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true)
     })
     public ProductDto createProduct(ProductRequest request) {
@@ -168,6 +206,7 @@ public class ProductService {
         put = @CachePut(value = "product", key = "#id"),
         evict = {
                 @CacheEvict(value = "product_pages", allEntries = true),
+                @CacheEvict(value = "homepage_category_products", allEntries = true),
                 @CacheEvict(value = "products_by_category", allEntries = true)
         }
     )
@@ -229,7 +268,8 @@ public class ProductService {
         put = @CachePut(value = "product", key = "#id"),
         evict = {
                 @CacheEvict(value = "product_pages", allEntries = true),
-                @CacheEvict(value = "products_by_category", allEntries = true)
+                @CacheEvict(value = "products_by_category", allEntries = true),
+                @CacheEvict(value = "homepage_category_products", allEntries = true)
         }
     )
     public ProductDto updateStatusProduct(Long id) {
@@ -270,7 +310,8 @@ public class ProductService {
     @Caching(evict = {
         @CacheEvict(value = "product", key = "#id"),
         @CacheEvict(value = "product_pages", allEntries = true),
-        @CacheEvict(value = "products_by_category", allEntries = true)
+        @CacheEvict(value = "products_by_category", allEntries = true),
+        @CacheEvict(value = "homepage_category_products", allEntries = true)
     })
     @Transactional
     public String deleteProduct(Long id) {

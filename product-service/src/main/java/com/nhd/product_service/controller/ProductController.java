@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.nhd.product_service.request.ProductRequest;
 import com.nhd.product_service.dto.AdminProductDto;
+import com.nhd.product_service.dto.CategoryProductDto;
 import com.nhd.product_service.request.ProductFilterRequest;
 import com.nhd.product_service.service.FileStorageService;
 import com.nhd.product_service.service.ProductService;
@@ -50,6 +51,12 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductDto>> getProductById(@PathVariable("id") Long id) {
         ProductDto response = productService.getProductById(id);
         return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "A product retrieved successfully!", response));
+    }
+
+    @GetMapping("/all-categories")
+    public ResponseEntity<ApiResponse<List<CategoryProductDto>>> getCategoryProductDtos() {
+        List<CategoryProductDto> response = productService.getCategoryProductDtos();
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "All categories with products retrieved successfully!", response));
     }
 
     @PostMapping("/{id}/adjust-stock")
