@@ -52,11 +52,28 @@ public class ProductService {
     }
 
     @Cacheable(value = "product_pages", key = "'page_'+#page+'_size_'+#size")
-    public PageResponse<ProductDto> getAllProducts(int page, int size) {
+    public List<ProductDto> getAllProductsRaw(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-
         Page<Product> products = productRepository.findAll(pageable);
-        return getProductPageResponse(products);
+        return products.getContent().stream()
+                .map(ProductMapper::toDto)
+                .toList();
+    }
+
+    public PageResponse<ProductDto> getAllProducts(int page, int size) {
+
+        List<ProductDto> list = getAllProductsRaw(page, size);
+
+        long totalElements = productRepository.count();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        return PageResponse.<ProductDto>builder()
+                .data(list)
+                .totalElements(totalElements)
+                .totalPages(totalPages)
+                .currentPage(page)
+                .pageSize(size)
+                .build();
     }
 
     @Cacheable(value = "products_by_category", key = "'category_'+#categoryId+'_page_'+#page+'_size_'+#size")

@@ -14,45 +14,50 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 @Configuration
 @EnableCaching
-public class RedisConfig {
+    public class RedisConfig {
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+    public GenericJackson2JsonRedisSerializer redisSerializer() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return new GenericJackson2JsonRedisSerializer(objectMapper);
+    }
+
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate( RedisConnectionFactory factory, GenericJackson2JsonRedisSerializer serializer) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(RedisSerializer.string());
-        template.setValueSerializer(RedisSerializer.json());
+        template.setValueSerializer(serializer);
         template.setHashKeySerializer(RedisSerializer.string());
-        template.setHashValueSerializer(RedisSerializer.json());
+        template.setHashValueSerializer(serializer);
         return template;
     }
 
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory factory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+    public RedisCacheConfiguration redisCacheConfiguration(GenericJackson2JsonRedisSerializer serializer) {
+        return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(30))
                 .disableCachingNullValues()
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.json()));
-
-        return RedisCacheManager.builder(factory)
-                .cacheDefaults(config)
-                .build();
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
     }
 
     @Bean
-    public RedisMessageListenerContainer redisMessageListenerContainer(
-            RedisConnectionFactory connectionFactory) {
-        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-        container.setConnectionFactory(connectionFactory);
-        return container;
+    public CacheManager cacheManager(RedisConnectionFactory factory, RedisCacheConfiguration redisCacheConfiguration) {
+        return RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration).build();
     }
 
     @Bean
@@ -65,16 +70,15 @@ public class RedisConfig {
         return new StringRedisTemplate(factory);
     }
 
+
     @Bean
     public MessageListenerAdapter listenerAdapter(CacheInvalidationSubscriber subscriber) {
         return new MessageListenerAdapter(subscriber);
     }
 
+
     @Bean
-    public RedisMessageListenerContainer redisContainer(
-            RedisConnectionFactory connectionFactory,
-            MessageListenerAdapter listenerAdapter,
-            ChannelTopic cacheInvalidationTopic) {
+    public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory, MessageListenerAdapter listenerAdapter, ChannelTopic cacheInvalidationTopic) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(listenerAdapter, cacheInvalidationTopic);
