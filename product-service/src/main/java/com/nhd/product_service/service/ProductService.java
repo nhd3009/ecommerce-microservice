@@ -47,7 +47,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final FileStorageService fileStorageService;
 
-    @Cacheable(value = "product", key = "#id")
     public ProductDto getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with ID: " + id + "not found"));
@@ -203,7 +202,6 @@ public class ProductService {
 
     @Transactional
     @Caching(
-        put = @CachePut(value = "product", key = "#id"),
         evict = {
                 @CacheEvict(value = "product_pages", allEntries = true),
                 @CacheEvict(value = "homepage_category_products", allEntries = true),
@@ -265,7 +263,6 @@ public class ProductService {
 
     @Transactional
     @Caching(
-        put = @CachePut(value = "product", key = "#id"),
         evict = {
                 @CacheEvict(value = "product_pages", allEntries = true),
                 @CacheEvict(value = "products_by_category", allEntries = true),
@@ -308,7 +305,6 @@ public class ProductService {
     }
 
     @Caching(evict = {
-        @CacheEvict(value = "product", key = "#id"),
         @CacheEvict(value = "product_pages", allEntries = true),
         @CacheEvict(value = "products_by_category", allEntries = true),
         @CacheEvict(value = "homepage_category_products", allEntries = true)
